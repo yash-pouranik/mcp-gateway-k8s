@@ -1,0 +1,15 @@
+{
+  "name": "mcp-gateway-k8s",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WooCommerce hosting platform with team MCP gateway on Kubernetes",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "cluster:status": "kubectl get nodes,pods -A"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

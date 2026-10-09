@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway
+  labels:
+    app.kubernetes.io/part-of: mcp-gateway-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: woocommerce
+  labels:
+    app.kubernetes.io/part-of: mcp-gateway-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: extra-mcps
+  labels:
+    app.kubernetes.io/part-of: mcp-gateway-platform
