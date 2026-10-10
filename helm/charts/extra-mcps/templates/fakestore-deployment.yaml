@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fakestore-mcp
+  labels:
+    app.kubernetes.io/name: fakestore-mcp
+    app.kubernetes.io/part-of: mcp-gateway-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fakestore-mcp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fakestore-mcp
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: mcp-server
+          image: "{{ .Values.fakestore.image.repository }}:{{ .Values.fakestore.image.tag }}"
+          imagePullPolicy: {{ .Values.fakestore.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+          resources:
+            {{- toYaml .Values.fakestore.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3

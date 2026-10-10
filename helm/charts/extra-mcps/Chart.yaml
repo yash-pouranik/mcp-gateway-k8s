@@ -1,0 +1,6 @@
+apiVersion: v2
+name: extra-mcps
+description: Secondary upstream MCP servers (FakeStore and Notes) for MCP Gateway platform
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
