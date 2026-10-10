@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wordpress-content-pvc
+  labels:
+    app.kubernetes.io/name: wordpress
+    app.kubernetes.io/part-of: woocommerce-store
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.wordpress.persistence.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.wordpress.persistence.size }}

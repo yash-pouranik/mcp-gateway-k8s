@@ -1,0 +1,52 @@
+mariadb:
+  image:
+    repository: mariadb
+    tag: "11.4"
+    pullPolicy: IfNotPresent
+  auth:
+    database: wordpress
+    username: wp_user
+    password: wp_secure_password_123
+    rootPassword: mariadb_root_password_123
+  persistence:
+    size: 2Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+wordpress:
+  image:
+    repository: wordpress
+    tag: "6.5-apache"
+    pullPolicy: IfNotPresent
+  host: store.localtest.me
+  title: "Urumi WooCommerce Store"
+  adminUser: admin
+  adminPassword: AdminSecurePassword123!
+  adminEmail: admin@example.com
+  persistence:
+    size: 2Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 150m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+
+woocommerce:
+  consumerKey: "ck_urumi_mcp_gateway_prod_key"
+  consumerSecret: "cs_urumi_mcp_gateway_prod_secret"
+  mcpInternalToken: "mcp_internal_bearer_token_secret_9988"
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"

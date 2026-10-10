@@ -1,0 +1,110 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: woocommerce-provisioner-{{ randAlphaNum 5 | lower }}
+  labels:
+    app.kubernetes.io/name: woocommerce-provisioner
+    app.kubernetes.io/part-of: woocommerce-store
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: woocommerce-provisioner
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: wp-cli
+          image: wordpress:cli-2.11
+          command:
+            - "/bin/sh"
+            - "-c"
+            - |
+              set -e
+              echo "Waiting for WordPress HTTP endpoint to become ready..."
+              until wp core is-installed --path=/var/www/html 2>/dev/null || nc -z -w 2 wordpress.woocommerce.svc.cluster.local 80; do
+                echo "WordPress not reachable yet, waiting 5 seconds..."
+                sleep 5
+              done
+
+              echo "Checking if WordPress core is installed..."
+              if ! wp core is-installed --path=/var/www/html; then
+                echo "Installing WordPress core..."
+                wp core install \
+                  --path=/var/www/html \
+                  --url="http://{{ .Values.wordpress.host }}" \
+                  --title="{{ .Values.wordpress.title }}" \
+                  --admin_user="{{ .Values.wordpress.adminUser }}" \
+                  --admin_password="{{ .Values.wordpress.adminPassword }}" \
+                  --admin_email="{{ .Values.wordpress.adminEmail }}" \
+                  --skip-email
+                echo "WordPress core installed successfully!"
+              else
+                echo "WordPress core is already installed."
+              fi
+
+              echo "Configuring permalink structure for REST API support..."
+              wp rewrite structure '/index.php/%postname%/' --path=/var/www/html --hard
+
+              echo "Checking and installing WooCommerce plugin..."
+              if ! wp plugin is-installed woocommerce --path=/var/www/html; then
+                echo "Installing and activating WooCommerce..."
+                wp plugin install woocommerce --activate --path=/var/www/html
+              else
+                echo "WooCommerce plugin already installed. Ensuring activated..."
+                wp plugin activate woocommerce --path=/var/www/html || true
+              fi
+
+              echo "Enabling Cash on Delivery (COD) payment gateway..."
+              wp option update woocommerce_cod_settings '{"enabled":"yes","title":"Cash on delivery","description":"Pay with cash upon delivery.","instructions":"","enable_for_methods":[],"enable_for_virtual":"yes"}' --format=json --path=/var/www/html
+
+              echo "Provisioning WooCommerce REST API keys for MCP Gateway..."
+              wp eval --path=/var/www/html '
+              global $wpdb;
+              $consumer_key = "'{{ .Values.woocommerce.consumerKey }}'";
+              $consumer_secret = "'{{ .Values.woocommerce.consumerSecret }}'";
+              
+              if (!function_exists("wc_api_hash")) {
+                  require_once WP_PLUGIN_DIR . "/woocommerce/includes/wc-core-functions.php";
+              }
+              
+              $hashed_key = wc_api_hash($consumer_key);
+              $table_name = $wpdb->prefix . "woocommerce_api_keys";
+              
+              $existing = $wpdb->get_var($wpdb->prepare("SELECT key_id FROM $table_name WHERE description = %s", "MCP Gateway"));
+              if ($existing) {
+                  $wpdb->update($table_name, array(
+                      "consumer_key" => $hashed_key,
+                      "consumer_secret" => $consumer_secret,
+                      "truncated_key" => substr($consumer_key, -7),
+                      "permissions" => "read_write"
+                  ), array("key_id" => $existing));
+                  echo "Updated existing MCP Gateway API keys in database.\n";
+              } else {
+                  $wpdb->insert($table_name, array(
+                      "user_id" => 1,
+                      "description" => "MCP Gateway",
+                      "permissions" => "read_write",
+                      "consumer_key" => $hashed_key,
+                      "consumer_secret" => $consumer_secret,
+                      "truncated_key" => substr($consumer_key, -7)
+                  ));
+                  echo "Created new MCP Gateway API keys in database.\n";
+              }
+              '
+
+              echo "Flushing rewrite rules..."
+              wp rewrite flush --path=/var/www/html
+
+              echo "WooCommerce provisioner job completed successfully!"
+          volumeMounts:
+            - name: wp-content
+              mountPath: /var/www/html/wp-content
+      volumes:
+        - name: wp-content
+          persistentVolumeClaim:
+            claimName: wordpress-content-pvc

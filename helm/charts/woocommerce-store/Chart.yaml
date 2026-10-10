@@ -1,0 +1,6 @@
+apiVersion: v2
+name: woocommerce-store
+description: Production-ready WooCommerce Store with MariaDB and automated WP-CLI bootstrap
+type: application
+version: 0.1.0
+appVersion: "6.5"
