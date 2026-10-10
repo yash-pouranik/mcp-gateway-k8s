@@ -45,6 +45,19 @@ woocommerce:
   consumerSecret: "cs_urumi_mcp_gateway_prod_secret"
   mcpInternalToken: "mcp_internal_bearer_token_secret_9988"
 
+woocommerceMcp:
+  image:
+    repository: mcp-platform/woocommerce-mcp
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
 ingress:
   enabled: true
   className: nginx
