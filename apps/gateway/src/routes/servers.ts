@@ -1,0 +1,136 @@
+import { Router, Request, Response } from 'express';
+import { prisma } from '../db.js';
+import { requireUserAuth, requireAdmin } from '../middleware/auth.js';
+import { encryptCredential } from '../services/crypto.js';
+import { validateServerUrl } from '../services/ssrf.js';
+
+const router = Router();
+
+// GET /api/servers (List all registered servers)
+router.get('/', requireUserAuth, async (req: Request, res: Response): Promise<void> => {
+  const servers = await prisma.mcpServer.findMany({
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      url: true,
+      credentialHeader: true,
+      enabled: true,
+      status: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  res.json({ servers });
+});
+
+// POST /api/servers (Register new upstream server - Admin only)
+router.post('/', requireUserAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const { name, slug, url, credentialHeader, credentialValue } = req.body;
+
+  if (!name || !slug || !url) {
+    res.status(400).json({ error: 'Name, slug, and url are required' });
+    return;
+  }
+
+  // Validate slug format
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    res.status(400).json({ error: 'Slug must contain only lowercase letters, numbers, and hyphens' });
+    return;
+  }
+
+  // Validate URL with SSRF protection
+  try {
+    await validateServerUrl(url);
+  } catch (err: any) {
+    res.status(400).json({ error: `URL validation failed: ${err.message}` });
+    return;
+  }
+
+  // Check unique slug
+  const existing = await prisma.mcpServer.findUnique({ where: { slug } });
+  if (existing) {
+    res.status(409).json({ error: `Server with slug "${slug}" already exists` });
+    return;
+  }
+
+  let encryptedCredential: string | null = null;
+  if (credentialValue && typeof credentialValue === 'string') {
+    encryptedCredential = encryptCredential(credentialValue);
+  }
+
+  const server = await prisma.mcpServer.create({
+    data: {
+      name,
+      slug,
+      url,
+      credentialHeader: credentialHeader || 'Authorization',
+      credentialValueEncrypted: encryptedCredential,
+      enabled: true,
+      status: 'connected',
+    },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      url: true,
+      credentialHeader: true,
+      enabled: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+
+  res.status(201).json({ server });
+});
+
+// PATCH /api/servers/:id/toggle (Enable/Disable server - Admin only)
+router.patch('/:id/toggle', requireUserAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const server = await prisma.mcpServer.findUnique({ where: { id } });
+
+  if (!server) {
+    res.status(404).json({ error: 'Server not found' });
+    return;
+  }
+
+  const updatedEnabled = !server.enabled;
+  const updatedStatus = updatedEnabled ? 'connected' : 'disabled';
+
+  const updated = await prisma.mcpServer.update({
+    where: { id },
+    data: {
+      enabled: updatedEnabled,
+      status: updatedStatus,
+    },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      url: true,
+      credentialHeader: true,
+      enabled: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+
+  res.json({ server: updated });
+});
+
+// DELETE /api/servers/:id (Delete server - Admin only)
+router.delete('/:id', requireUserAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const server = await prisma.mcpServer.findUnique({ where: { id } });
+
+  if (!server) {
+    res.status(404).json({ error: 'Server not found' });
+    return;
+  }
+
+  await prisma.mcpServer.delete({ where: { id } });
+
+  res.json({ message: 'Server deleted successfully' });
+});
+
+export default router;

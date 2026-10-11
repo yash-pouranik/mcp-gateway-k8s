@@ -78,3 +78,42 @@ helm template test-gw helm/charts/gateway -f helm/values-local.yaml
 ## 6. Git & Commit Guidelines
 - Follow Conventional Commits: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`.
 - Keep commits atomic and scoped to single logical units.
+- Do NOT include phase numbers or references to interview/hiring/assessment in commit messages.
+
+---
+
+## 7. Current Implementation State & Progress
+
+### Completed Components
+1. **Core Cluster & Ingress Infrastructure:**
+   - Local `k3d` cluster (`mcp-cluster`) with port forward 80/443.
+   - `ingress-nginx` installed and operating.
+   - Namespaces provisioned: `woocommerce`, `extra-mcps`, `gateway`.
+2. **WooCommerce Storefront Layer (`woocommerce` namespace):**
+   - MariaDB 11.4 StatefulSet (`mariadb-0`) 1/1 Running with PVC.
+   - WordPress 6.5 Apache Deployment (`wordpress`) 1/1 Running with PVC.
+   - Automated initialization completed: WooCommerce 8.9.3 LTS clean installed, Cash on Delivery enabled, REST API keys generated.
+   - Storefront accessible at `store.localtest.me`.
+3. **WooCommerce MCP Server (`apps/woocommerce-mcp`):**
+   - Streamable HTTP server on port 3000 (`POST /mcp`) with Bearer token authentication.
+   - Exposes tools: `list_products`, `create_product`, `list_orders`, `get_order`, `update_order_status`.
+   - Verified live in cluster: product created and listed successfully.
+4. **Secondary Upstream MCP Servers (`extra-mcps` namespace):**
+   - `apps/fakestore-mcp`: Streamable HTTP server exposing FakeStore API tools (`list_products`, `get_product`, `list_categories`). Pod 1/1 Running and healthy.
+   - `apps/notes-mcp`: Streamable HTTP server exposing notes CRUD tools (`create_note`, `list_notes`, `delete_note`). Pod 1/1 Running and healthy.
+   - Helm chart `helm/charts/extra-mcps` deployed.
+
+### In Progress / Up Next
+1. **Gateway Backend (`apps/gateway` & `helm/charts/gateway`):**
+   - TypeScript code created: Express app, Prisma schema, AES-256-GCM crypto service, SHA-256 API key hashing, SSRF guard, JSON-RPC Streamable HTTP hub, Upstream manager, Audit logger, Auth & REST routes (`/api/auth`, `/api/servers`, `/api/members`, `/api/audit`, `/api/chat`).
+   - PostgreSQL 16 StatefulSet running in `gateway` namespace (`postgres-0` 1/1 Running).
+   - Docker image `mcp-platform/gateway:latest` built with pure JS `bcryptjs`.
+   - **Immediate Next Step:** Finalize gateway container startup in cluster (resolve pod restart / probe configuration) and run database seed.
+2. **React Dashboard & Chat Agent (`apps/dashboard`):**
+   - Scaffold Vite + React + Tailwind frontend with Server Management, API Keys, and Audit Log tables.
+   - Multi-turn AI Chat interface calling Gateway tools.
+   - Deploy Ingress for `dashboard.localtest.me`.
+3. **Hardening & Verification:**
+   - Apply NetworkPolicies matrix (`k8s/network-policies.yaml`).
+   - Verify all 8 test cases in Section 5 of `plan.md`.
+

@@ -1,0 +1,84 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  admin
+  member
+}
+
+enum ServerStatus {
+  connected
+  unreachable
+  disabled
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  role          Role      @default(member)
+  passwordHash  String    @map("password_hash")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  apiKeys       ApiKey[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  name        String
+  keyPrefix   String    @map("key_prefix")
+  keyHash     String    @unique @map("key_hash")
+  revokedAt   DateTime? @map("revoked_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+model McpServer {
+  id                        String        @id @default(uuid())
+  name                      String
+  slug                      String        @unique
+  url                       String
+  credentialHeader          String?       @default("Authorization") @map("credential_header")
+  credentialValueEncrypted  String?       @map("credential_value_encrypted")
+  enabled                   Boolean       @default(true)
+  status                    ServerStatus  @default(connected)
+  createdAt                 DateTime      @default(now()) @map("created_at")
+
+  auditLogs                 AuditLog[]
+
+  @@map("mcp_servers")
+}
+
+model AuditLog {
+  id           String     @id @default(uuid())
+  userId       String?    @map("user_id")
+  serverId     String?    @map("server_id")
+  toolName     String     @map("tool_name")
+  inputSummary Json       @map("input_summary")
+  calledAt     DateTime   @default(now()) @map("called_at")
+  durationMs   Int        @map("duration_ms")
+  success      Boolean
+  errorMsg     String?    @map("error_msg")
+
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  server       McpServer? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+
+  @@index([calledAt])
+  @@index([userId])
+  @@index([serverId])
+  @@map("audit_log")
+}

@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  labels:
+    app: gateway
+spec:
+  replicas: {{ .Values.gateway.replicas }}
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done;']
+        - name: db-migrate-and-seed
+          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag }}"
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Running Prisma migration..."
+              npx prisma db push --skip-generate
+              echo "Running Database seed..."
+              node -e '
+                const { execSync } = require("child_process");
+                execSync("npx tsx prisma/seed.ts", { stdio: "inherit" });
+              ' || echo "Seed executed or non-fatal"
+          envFrom:
+            - secretRef:
+                name: gateway-secrets
+      containers:
+        - name: gateway
+          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag }}"
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.gateway.port }}
+              name: http
+          env:
+            - name: PORT
+              value: "{{ .Values.gateway.port }}"
+          envFrom:
+            - secretRef:
+                name: gateway-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.gateway.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.gateway.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  labels:
+    app: gateway
+spec:
+  ports:
+    - port: {{ .Values.gateway.port }}
+      targetPort: {{ .Values.gateway.port }}
+      name: http
+  selector:
+    app: gateway
