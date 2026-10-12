@@ -111,12 +111,16 @@ helm template test-gw helm/charts/gateway -f helm/values-local.yaml
    - Health monitor verifies all 3 upstreams as `connected`.
    - Tool execution (`tools/call`) tested and verified with full audit logging attributed to the authenticated user.
 
+6. **React Dashboard & Chat Agent (`apps/dashboard`):**
+   - Built Vite + React + Tailwind frontend SPA.
+   - UI Views: Upstream Servers Management (status badge, enable/disable toggle, inspect tools modal, register server dialog), API Keys Management (generate with SHA-256 hash, copy-to-clipboard, revoke key), Live Audit Log Table (filtering, duration, input inspection), and Multi-turn AI Agent Chat interface.
+   - Containerized with Nginx static serving & reverse proxy to `/api` and `/mcp`.
+   - Deployed live in cluster at `dashboard.localtest.me` (HTTP & HTTPS).
+
 ### In Progress / Up Next
-1. **React Dashboard & Chat Agent (`apps/dashboard`):**
-   - Scaffold Vite + React + Tailwind frontend with Server Management, API Keys, and Audit Log tables.
-   - Multi-turn AI Chat interface calling Gateway tools via `/api/chat`.
-   - Deploy Ingress for `dashboard.localtest.me`.
-2. **Hardening & Verification:**
+1. **Hardening & Verification (Phase 6 & 7):**
    - Apply NetworkPolicies matrix (`k8s/network-policies.yaml`).
-   - Verify all 8 test cases in Section 5 of `plan.md`.
+   - Create environment values files: `helm/values-local.yaml` and `helm/values-prod.yaml`.
+   - Run full 8-point Definition of Done verification sequence.
+   - Documentation deliverables: `README.md`, `docs/system-design.md`, and `docs/threat-model.md`.
 

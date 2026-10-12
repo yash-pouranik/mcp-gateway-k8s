@@ -1,0 +1,71 @@
+import React, { useState, useEffect } from 'react';
+import { api, User } from './api';
+import { Navbar } from './components/Navbar';
+import { LoginView } from './components/LoginView';
+import { ServersView } from './components/ServersView';
+import { ApiKeysView } from './components/ApiKeysView';
+import { AuditLogView } from './components/AuditLogView';
+import { ChatView } from './components/ChatView';
+
+export const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentTab, setCurrentTab] = useState<'servers' | 'keys' | 'audit' | 'chat'>('servers');
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('mcp_token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const data = await api.getMe();
+        setUser(data.user);
+      } catch (_) {
+        localStorage.removeItem('mcp_token');
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('mcp_token');
+    setUser(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500 font-mono text-sm">
+        Initializing Gateway Dashboard...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginView onLoginSuccess={(u) => setUser(u)} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      <Navbar
+        user={user}
+        currentTab={currentTab}
+        onTabChange={(tab) => setCurrentTab(tab)}
+        onLogout={handleLogout}
+      />
+
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {currentTab === 'servers' && <ServersView />}
+        {currentTab === 'keys' && <ApiKeysView />}
+        {currentTab === 'audit' && <AuditLogView />}
+        {currentTab === 'chat' && <ChatView />}
+      </main>
+    </div>
+  );
+};
+
+export default App;
