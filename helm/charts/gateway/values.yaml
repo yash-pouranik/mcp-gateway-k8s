@@ -13,14 +13,14 @@ postgres:
 gateway:
   image:
     repository: mcp-platform/gateway
-    tag: latest
+    tag: v1.0.1
     pullPolicy: IfNotPresent
   replicas: 1
   port: 3000
   env:
     jwtSecret: "super-secure-production-ready-jwt-secret-xyz"
     encryptionKey: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-    woocommerceMcpToken: "wc_mcp_prod_secret_token_12345"
+    woocommerceMcpToken: "mcp_internal_bearer_token_secret_9988"
     adminEmail: "admin@mcp-platform.local"
     adminPassword: "AdminPass123!"
 

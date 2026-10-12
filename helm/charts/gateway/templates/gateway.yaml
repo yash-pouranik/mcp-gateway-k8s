@@ -24,13 +24,11 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
+              set -e
               echo "Running Prisma migration..."
               npx prisma db push --skip-generate
               echo "Running Database seed..."
-              node -e '
-                const { execSync } = require("child_process");
-                execSync("npx tsx prisma/seed.ts", { stdio: "inherit" });
-              ' || echo "Seed executed or non-fatal"
+              npx tsx prisma/seed.ts || echo "Seed non-fatal"
           envFrom:
             - secretRef:
                 name: gateway-secrets
@@ -38,6 +36,7 @@ spec:
         - name: gateway
           image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag }}"
           imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          command: ["node", "dist/index.js"]
           ports:
             - containerPort: {{ .Values.gateway.port }}
               name: http

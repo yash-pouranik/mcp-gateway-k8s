@@ -103,17 +103,20 @@ helm template test-gw helm/charts/gateway -f helm/values-local.yaml
    - `apps/notes-mcp`: Streamable HTTP server exposing notes CRUD tools (`create_note`, `list_notes`, `delete_note`). Pod 1/1 Running and healthy.
    - Helm chart `helm/charts/extra-mcps` deployed.
 
+5. **Gateway Backend & Database Core (`gateway` namespace):**
+   - Express backend running (`gateway` Deployment 1/1 Running, zero restarts).
+   - PostgreSQL 16 StatefulSet (`postgres-0`) 1/1 Running with PVC.
+   - Prisma migrations and database seed completed: Admin, Member A, Member B, Bob's API key, and 3 upstream servers registered.
+   - Streamable HTTP `/mcp` hub active: aggregates 11 tools across `woocommerce`, `fakestore`, and `notes`.
+   - Health monitor verifies all 3 upstreams as `connected`.
+   - Tool execution (`tools/call`) tested and verified with full audit logging attributed to the authenticated user.
+
 ### In Progress / Up Next
-1. **Gateway Backend (`apps/gateway` & `helm/charts/gateway`):**
-   - TypeScript code created: Express app, Prisma schema, AES-256-GCM crypto service, SHA-256 API key hashing, SSRF guard, JSON-RPC Streamable HTTP hub, Upstream manager, Audit logger, Auth & REST routes (`/api/auth`, `/api/servers`, `/api/members`, `/api/audit`, `/api/chat`).
-   - PostgreSQL 16 StatefulSet running in `gateway` namespace (`postgres-0` 1/1 Running).
-   - Docker image `mcp-platform/gateway:latest` built with pure JS `bcryptjs`.
-   - **Immediate Next Step:** Finalize gateway container startup in cluster (resolve pod restart / probe configuration) and run database seed.
-2. **React Dashboard & Chat Agent (`apps/dashboard`):**
+1. **React Dashboard & Chat Agent (`apps/dashboard`):**
    - Scaffold Vite + React + Tailwind frontend with Server Management, API Keys, and Audit Log tables.
-   - Multi-turn AI Chat interface calling Gateway tools.
+   - Multi-turn AI Chat interface calling Gateway tools via `/api/chat`.
    - Deploy Ingress for `dashboard.localtest.me`.
-3. **Hardening & Verification:**
+2. **Hardening & Verification:**
    - Apply NetworkPolicies matrix (`k8s/network-policies.yaml`).
    - Verify all 8 test cases in Section 5 of `plan.md`.
 

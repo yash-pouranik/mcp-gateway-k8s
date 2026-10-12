@@ -99,7 +99,7 @@ async function main() {
 
   // 5. Seed Upstream MCP Servers
   // Server 1: WooCommerce MCP Server
-  const wcToken = process.env.WOOCOMMERCE_MCP_TOKEN || 'wc_mcp_prod_secret_token_12345';
+  const wcToken = process.env.WOOCOMMERCE_MCP_TOKEN || 'mcp_internal_bearer_token_secret_9988';
   const wcEncrypted = encryptCredential(`Bearer ${wcToken}`);
 
   await prisma.mcpServer.upsert({
