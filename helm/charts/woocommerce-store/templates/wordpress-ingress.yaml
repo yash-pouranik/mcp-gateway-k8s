@@ -10,6 +10,9 @@ metadata:
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - {{ .Values.wordpress.host }}
   rules:
     - host: {{ .Values.wordpress.host }}
       http:
