@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../api';
+import ReactMarkdown from 'react-markdown';
 import { Send, Bot, User, Sparkles, Trash2, Loader2, ArrowRight } from 'lucide-react';
 
 interface ChatMessage {
@@ -139,7 +140,37 @@ export const ChatView: React.FC = () => {
                     : 'bg-zinc-900/80 border border-zinc-800 text-zinc-200 rounded-tl-none shadow-sm'
                 }`}
               >
-                <div className="whitespace-pre-wrap font-sans">{m.content}</div>
+                {isUser ? (
+                  <div className="whitespace-pre-wrap font-sans">{m.content}</div>
+                ) : (
+                  <div className="prose prose-invert prose-xs max-w-none text-zinc-200">
+                    <ReactMarkdown
+                      components={{
+                        h1: ({ ...props }) => <h1 className="text-sm font-bold text-white mb-2 mt-3" {...props} />,
+                        h2: ({ ...props }) => <h2 className="text-xs font-bold text-white mb-1.5 mt-2.5" {...props} />,
+                        h3: ({ ...props }) => <h3 className="text-xs font-semibold text-cf-orange mb-1 mt-2" {...props} />,
+                        p: ({ ...props }) => <p className="mb-2 leading-relaxed" {...props} />,
+                        ul: ({ ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
+                        ol: ({ ...props }) => <ol className="list-decimal pl-4 mb-2 space-y-1" {...props} />,
+                        li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
+                        strong: ({ ...props }) => <strong className="font-semibold text-white" {...props} />,
+                        a: ({ ...props }) => (
+                          <a
+                            className="text-cf-orange hover:text-amber-400 underline font-medium"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            {...props}
+                          />
+                        ),
+                        code: ({ ...props }) => (
+                          <code className="px-1 py-0.5 rounded bg-zinc-800 text-cf-orange font-mono text-[11px]" {...props} />
+                        ),
+                      }}
+                    >
+                      {m.content}
+                    </ReactMarkdown>
+                  </div>
+                )}
                 <div
                   className={`mt-1.5 text-[10px] font-mono ${
                     isUser ? 'text-white/80 text-right' : 'text-zinc-500'

@@ -23,6 +23,8 @@ gateway:
     woocommerceMcpToken: "mcp_internal_bearer_token_secret_9988"
     adminEmail: "admin@mcp-platform.local"
     adminPassword: "AdminPass123!"
+    openaiApiKey: ""
+    openaiModel: "gpt-4o-mini"
 
 dashboard:
   image:

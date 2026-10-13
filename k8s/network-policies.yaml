@@ -1,0 +1,244 @@
+# ==============================================================================
+# MCP Gateway & Platform — Strict Network Policies (Zero Trust Isolation)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. NAMESPACE: woocommerce
+# ------------------------------------------------------------------------------
+
+# 1.1 Default Deny all Ingress in woocommerce namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: woocommerce
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# 1.2 WordPress Ingress: Allow from ingress-nginx (port 80) and woocommerce-mcp (port 80)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-wordpress-ingress
+  namespace: woocommerce
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: wordpress
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow traffic from ingress-nginx controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 80
+    # Allow internal REST API calls from woocommerce-mcp pod
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: woocommerce-mcp
+      ports:
+        - protocol: TCP
+          port: 80
+---
+# 1.3 MariaDB Ingress: Strictly allow only from wordpress pod (port 3306)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mariadb-ingress
+  namespace: woocommerce
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mariadb
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: wordpress
+      ports:
+        - protocol: TCP
+          port: 3306
+---
+# 1.4 WooCommerce MCP Ingress: Strictly allow only from gateway pod (port 3000)
+# (Zero public ingress, strictly ClusterIP internal)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-woocommerce-mcp-ingress
+  namespace: woocommerce
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: woocommerce-mcp
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: gateway
+          podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 3000
+
+---
+# ------------------------------------------------------------------------------
+# 2. NAMESPACE: extra-mcps
+# ------------------------------------------------------------------------------
+
+# 2.1 Default Deny all Ingress in extra-mcps namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: extra-mcps
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# 2.2 FakeStore MCP Ingress: Strictly allow only from gateway pod (port 3000)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-fakestore-mcp-ingress
+  namespace: extra-mcps
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: fakestore-mcp
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: gateway
+          podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 3000
+---
+# 2.3 Notes MCP Ingress: Strictly allow only from gateway pod (port 3000)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-notes-mcp-ingress
+  namespace: extra-mcps
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: notes-mcp
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: gateway
+          podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 3000
+
+---
+# ------------------------------------------------------------------------------
+# 3. NAMESPACE: gateway
+# ------------------------------------------------------------------------------
+
+# 3.1 Default Deny all Ingress in gateway namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: gateway
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# 3.2 Gateway Ingress: Allow from ingress-nginx (port 3000) and dashboard (port 3000)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-ingress
+  namespace: gateway
+spec:
+  podSelector:
+    matchLabels:
+      app: gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3000
+    - from:
+        - podSelector:
+            matchLabels:
+              app: dashboard
+      ports:
+        - protocol: TCP
+          port: 3000
+---
+# 3.3 Dashboard Ingress: Allow from ingress-nginx (port 80)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dashboard-ingress
+  namespace: gateway
+spec:
+  podSelector:
+    matchLabels:
+      app: dashboard
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 80
+---
+# 3.4 PostgreSQL Ingress: Strictly allow only from gateway pod (port 5432)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-postgres-ingress
+  namespace: gateway
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 5432

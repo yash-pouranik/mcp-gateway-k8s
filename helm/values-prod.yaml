@@ -1,0 +1,169 @@
+# ==============================================================================
+# Helm Environment Values — Production VPS (k3s / managed k8s cluster)
+# ==============================================================================
+
+global:
+  environment: production
+  domainSuffix: example.com
+  tls:
+    enabled: true
+    clusterIssuer: letsencrypt-prod
+
+# 1. Gateway & Dashboard Configuration (helm/charts/gateway)
+gateway:
+  image:
+    repository: ghcr.io/urumi-cloud/gateway
+    tag: v1.0.2
+    pullPolicy: Always
+  replicas: 2
+  port: 3000
+  env:
+    jwtSecret: "" # Injected from production Vault or SealedSecret
+    encryptionKey: "" # 32-byte hex key injected from production Secret
+    woocommerceMcpToken: "" # Injected from production Secret
+    adminEmail: "admin@example.com"
+    adminPassword: "" # Injected from production Secret
+    openaiModel: "gpt-4o-mini"
+    openaiApiKey: "" # Injected from production Secret
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+dashboard:
+  image:
+    repository: ghcr.io/urumi-cloud/dashboard
+    tag: v1.0.3
+    pullPolicy: Always
+  replicas: 2
+  port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+postgres:
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  db:
+    name: mcpgateway
+    user: mcpuser
+    password: "" # Injected from production Secret
+  persistence:
+    size: 20Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+
+gatewayIngress:
+  enabled: true
+  host: dashboard.example.com
+  tls:
+    enabled: true
+    secretName: dashboard-tls-cert
+
+# 2. WooCommerce Store & Custom MCP Server (helm/charts/woocommerce-store)
+mariadb:
+  image:
+    repository: mariadb
+    tag: "11.4"
+    pullPolicy: IfNotPresent
+  auth:
+    database: wordpress
+    username: wp_user
+    password: "" # Injected from production Secret
+    rootPassword: "" # Injected from production Secret
+  persistence:
+    size: 20Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1500m
+      memory: 2048Mi
+
+wordpress:
+  image:
+    repository: wordpress
+    tag: "6.5-apache"
+    pullPolicy: IfNotPresent
+  host: store.example.com
+  title: "Urumi WooCommerce Store"
+  adminUser: admin
+  adminPassword: "" # Injected from production Secret
+  adminEmail: admin@example.com
+  persistence:
+    size: 30Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 300m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2048Mi
+
+woocommerce:
+  consumerKey: "" # Injected from production Secret
+  consumerSecret: "" # Injected from production Secret
+  mcpInternalToken: "" # Injected from production Secret
+
+woocommerceMcp:
+  image:
+    repository: ghcr.io/urumi-cloud/woocommerce-mcp
+    tag: v1.0.0
+    pullPolicy: Always
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# 3. Secondary MCP Servers (helm/charts/extra-mcps)
+fakestore:
+  image:
+    repository: ghcr.io/urumi-cloud/fakestore-mcp
+    tag: v1.0.0
+    pullPolicy: Always
+  replicas: 2
+  port: 3000
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+notes:
+  image:
+    repository: ghcr.io/urumi-cloud/notes-mcp
+    tag: v1.0.0
+    pullPolicy: Always
+  replicas: 2
+  port: 3000
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
