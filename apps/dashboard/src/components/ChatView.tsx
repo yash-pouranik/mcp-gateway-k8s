@@ -95,167 +95,172 @@ export const ChatView: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-9.5rem)] bg-zinc-950/90 border border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="px-5 py-3.5 bg-black/60 border-b border-zinc-800 flex items-center justify-between">
+    <div className="flex flex-col h-full w-full bg-black">
+      {/* Top Studio Bar */}
+      <div className="px-6 py-2.5 bg-zinc-950/80 border-b border-zinc-800/80 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center space-x-2.5">
-          <div className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-cf-orange">
-            <Bot className="w-4 h-4" />
+          <div className="p-1 rounded-md bg-zinc-900 border border-zinc-800 text-cf-orange">
+            <Bot className="w-3.5 h-3.5" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-white tracking-tight">AI Agent Studio</h2>
-            <div className="text-[11px] text-zinc-500 flex items-center space-x-1.5">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-semibold text-white tracking-tight">AI Agent Studio</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              <span>Autonomous Multi-Turn Tool Loop Active</span>
+              <span className="text-[10px] font-mono text-zinc-400">Autonomous Tool Loop Active</span>
             </div>
           </div>
         </div>
 
         <button
           onClick={handleClear}
-          className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-zinc-800 rounded-lg transition text-xs flex items-center space-x-1"
-          title="Reset conversation"
+          className="px-2.5 py-1 text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-zinc-800 rounded-md transition text-xs flex items-center space-x-1.5 font-medium"
+          title="New Chat / Reset Conversation"
         >
           <Trash2 className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Clear</span>
+          <span>New Chat</span>
         </button>
       </div>
 
-      {/* Message List */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-5">
-        {messages.map((m) => {
-          const isUser = m.role === 'user';
-          return (
-            <div key={m.id} className={`flex space-x-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
-              {!isUser && (
-                <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-cf-orange">
-                  <Bot className="w-3.5 h-3.5" />
-                </div>
-              )}
-
-              <div
-                className={`max-w-2xl rounded-xl px-4 py-3 text-xs leading-relaxed ${
-                  isUser
-                    ? 'bg-cf-orange text-white rounded-tr-none shadow-sm'
-                    : 'bg-zinc-900/80 border border-zinc-800 text-zinc-200 rounded-tl-none shadow-sm'
-                }`}
-              >
-                {isUser ? (
-                  <div className="whitespace-pre-wrap font-sans">{m.content}</div>
-                ) : (
-                  <div className="prose prose-invert prose-xs max-w-none text-zinc-200">
-                    <ReactMarkdown
-                      components={{
-                        h1: ({ ...props }) => <h1 className="text-sm font-bold text-white mb-2 mt-3" {...props} />,
-                        h2: ({ ...props }) => <h2 className="text-xs font-bold text-white mb-1.5 mt-2.5" {...props} />,
-                        h3: ({ ...props }) => <h3 className="text-xs font-semibold text-cf-orange mb-1 mt-2" {...props} />,
-                        p: ({ ...props }) => <p className="mb-2 leading-relaxed" {...props} />,
-                        ul: ({ ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
-                        ol: ({ ...props }) => <ol className="list-decimal pl-4 mb-2 space-y-1" {...props} />,
-                        li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
-                        strong: ({ ...props }) => <strong className="font-semibold text-white" {...props} />,
-                        a: ({ ...props }) => (
-                          <a
-                            className="text-cf-orange hover:text-amber-400 underline font-medium"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            {...props}
-                          />
-                        ),
-                        code: ({ ...props }) => (
-                          <code className="px-1 py-0.5 rounded bg-zinc-800 text-cf-orange font-mono text-[11px]" {...props} />
-                        ),
-                      }}
-                    >
-                      {m.content}
-                    </ReactMarkdown>
-                  </div>
-                )}
+      {/* Centered Chat Container (Claude / ChatGPT style) */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 scroll-smooth">
+        <div className="max-w-3xl mx-auto space-y-6">
+          {messages.map((m) => {
+            const isUser = m.role === 'user';
+            return (
+              <div key={m.id} className="flex space-x-4">
                 <div
-                  className={`mt-1.5 text-[10px] font-mono ${
-                    isUser ? 'text-white/80 text-right' : 'text-zinc-500'
+                  className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+                    isUser
+                      ? 'bg-zinc-800 text-zinc-200 border border-zinc-700'
+                      : 'bg-cf-orange/15 text-cf-orange border border-cf-orange/30'
                   }`}
                 >
-                  {m.timestamp.toLocaleTimeString()}
+                  {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                </div>
+
+                <div className="flex-1 space-y-1 overflow-hidden pt-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-semibold text-white">
+                      {isUser ? 'You' : 'Agent'}
+                    </span>
+                    <span className="text-[10px] font-mono text-zinc-500">
+                      {m.timestamp.toLocaleTimeString()}
+                    </span>
+                  </div>
+
+                  {isUser ? (
+                    <div className="text-sm text-zinc-100 whitespace-pre-wrap leading-relaxed font-sans">
+                      {m.content}
+                    </div>
+                  ) : (
+                    <div className="prose prose-invert prose-sm max-w-none text-zinc-300 leading-relaxed font-sans">
+                      <ReactMarkdown
+                        components={{
+                          h1: ({ ...props }) => <h1 className="text-base font-bold text-white mb-2 mt-4" {...props} />,
+                          h2: ({ ...props }) => <h2 className="text-sm font-bold text-white mb-2 mt-3" {...props} />,
+                          h3: ({ ...props }) => <h3 className="text-xs font-bold text-cf-orange mb-1.5 mt-2" {...props} />,
+                          p: ({ ...props }) => <p className="mb-2.5 leading-relaxed text-sm text-zinc-200" {...props} />,
+                          ul: ({ ...props }) => <ul className="list-disc pl-5 mb-3 space-y-1 text-sm text-zinc-300" {...props} />,
+                          ol: ({ ...props }) => <ol className="list-decimal pl-5 mb-3 space-y-1 text-sm text-zinc-300" {...props} />,
+                          li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
+                          strong: ({ ...props }) => <strong className="font-semibold text-white" {...props} />,
+                          a: ({ ...props }) => (
+                            <a
+                              className="text-cf-orange hover:text-amber-400 underline font-medium"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              {...props}
+                            />
+                          ),
+                          code: ({ ...props }) => (
+                            <code className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-cf-orange font-mono text-xs" {...props} />
+                          ),
+                        }}
+                      >
+                        {m.content}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                 </div>
               </div>
+            );
+          })}
 
-              {isUser && (
-                <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300">
-                  <User className="w-3.5 h-3.5" />
+          {loading && (
+            <div className="flex space-x-4">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cf-orange/15 text-cf-orange border border-cf-orange/30 flex items-center justify-center">
+                <Bot className="w-4 h-4 animate-spin" />
+              </div>
+              <div className="flex-1 pt-1.5">
+                <div className="flex items-center space-x-2 text-xs text-zinc-400 font-mono">
+                  <Loader2 className="w-3.5 h-3.5 text-cf-orange animate-spin" />
+                  <span>Executing autonomous tool loops via Gateway...</span>
                 </div>
-              )}
+              </div>
             </div>
-          );
-        })}
+          )}
 
-        {loading && (
-          <div className="flex items-center space-x-2.5 text-zinc-400 text-xs">
-            <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-cf-orange">
-              <Bot className="w-3.5 h-3.5 animate-spin" />
-            </div>
-            <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl px-3.5 py-2.5 rounded-tl-none flex items-center space-x-2 font-mono">
-              <Loader2 className="w-3.5 h-3.5 text-cf-orange animate-spin" />
-              <span>Resolving tool calls through Gateway...</span>
-            </div>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      {/* Suggested Prompts */}
-      {messages.length <= 2 && (
-        <div className="px-5 py-2.5 bg-black/40 border-t border-zinc-800/80">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 mb-2 flex items-center space-x-1.5 font-mono">
-            <Sparkles className="w-3 h-3 text-cf-orange" />
-            <span>Quick Test Actions</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {samplePrompts.map((p, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => handleSend(p.prompt)}
-                className="text-left p-2.5 bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800 rounded-lg transition group flex items-center justify-between"
-              >
-                <div>
-                  <div className="text-xs font-semibold text-white group-hover:text-cf-orange transition">
-                    {p.title}
-                  </div>
-                  <div className="text-[11px] text-zinc-400 truncate max-w-xs">{p.prompt}</div>
-                </div>
-                <ArrowRight className="w-3.5 h-3.5 text-zinc-600 group-hover:text-cf-orange transition ml-2 flex-shrink-0" />
-              </button>
-            ))}
+      {/* Floating Bottom Prompt Bar (Claude / ChatGPT style) */}
+      <div className="p-4 bg-gradient-to-t from-black via-black/95 to-transparent flex-shrink-0">
+        <div className="max-w-3xl mx-auto space-y-3">
+          {/* Quick prompt suggestions when conversation is fresh */}
+          {messages.length <= 2 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 flex items-center space-x-1 mr-1">
+                <Sparkles className="w-3 h-3 text-cf-orange" />
+                <span>Suggestions:</span>
+              </div>
+              {samplePrompts.map((p, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleSend(p.prompt)}
+                  className="px-2.5 py-1 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] text-zinc-300 hover:text-white transition flex items-center space-x-1.5 group"
+                >
+                  <span>{p.title}</span>
+                  <ArrowRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-cf-orange transition" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Large Floating Input Card */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+            className="relative flex items-center bg-zinc-900/90 hover:bg-zinc-900 border border-zinc-800 focus-within:border-cf-orange/60 rounded-2xl shadow-lg transition-all"
+          >
+            <input
+              type="text"
+              value={input}
+              disabled={loading}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask anything across WooCommerce, store orders, products, or team notes..."
+              className="w-full px-4 py-3.5 pr-14 bg-transparent text-white placeholder-zinc-500 text-sm focus:outline-none disabled:opacity-50"
+            />
+            <button
+              type="submit"
+              disabled={loading || !input.trim()}
+              className="absolute right-2.5 p-2 bg-cf-orange hover:bg-cf-hover active:bg-cf-dark disabled:opacity-30 disabled:hover:bg-cf-orange text-white rounded-xl transition shadow-sm"
+              title="Send prompt"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
+
+          <div className="text-center">
+            <span className="text-[11px] text-zinc-500">
+              Agent executes live tools across Kubernetes-hosted MCP servers with session audit attribution.
+            </span>
           </div>
         </div>
-      )}
-
-      {/* Input */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSend();
-        }}
-        className="p-3.5 bg-black/60 border-t border-zinc-800 flex items-center space-x-2.5"
-      >
-        <input
-          type="text"
-          value={input}
-          disabled={loading}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask AI agent to inspect WooCommerce store, create product, query orders, or notes..."
-          className="flex-1 px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 text-xs focus:outline-none focus:ring-1 focus:ring-cf-orange disabled:opacity-50"
-        />
-        <button
-          type="submit"
-          disabled={loading || !input.trim()}
-          className="p-2.5 bg-cf-orange hover:bg-cf-hover active:bg-cf-dark disabled:opacity-40 text-white rounded-xl transition shadow-sm"
-        >
-          <Send className="w-3.5 h-3.5" />
-        </button>
-      </form>
+      </div>
     </div>
   );
 };

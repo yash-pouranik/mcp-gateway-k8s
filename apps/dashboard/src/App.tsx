@@ -58,7 +58,7 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-7">
+      <main className={`flex-1 w-full ${currentTab === 'chat' ? 'h-[calc(100vh-4rem)] overflow-hidden p-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7'}`}>
         {currentTab === 'servers' && <ServersView />}
         {currentTab === 'keys' && <ApiKeysView />}
         {currentTab === 'audit' && <AuditLogView />}
