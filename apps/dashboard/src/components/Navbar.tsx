@@ -19,7 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'servers', label: 'Upstream MCP', icon: Server },
     { id: 'keys', label: 'API Keys', icon: Key },
     { id: 'audit', label: 'Audit Trail', icon: Terminal },
-    { id: 'chat', label: 'AI Agent', icon: Cpu },
+    { id: 'chat', label: 'VYNN Agent', icon: Cpu },
     { id: 'members', label: 'Team', icon: Users },
   ] as const;
 
@@ -55,7 +55,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                       : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-cf-orange' : 'text-zinc-400'}`} />
+                  {tab.id === 'chat' ? (
+                    <img src="/vynn_ai_logo.png" alt="VYNN" className="w-3.5 h-3.5 object-contain" />
+                  ) : (
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-cf-orange' : 'text-zinc-400'}`} />
+                  )}
                   <span>{tab.label}</span>
                 </button>
               );

@@ -162,7 +162,7 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
   const conversation: ChatMessage[] = [
     {
       role: 'system',
-      content: `You are Urumi Agent, an AI assistant for the WooCommerce & MCP Gateway platform. You have access to tools across connected systems (e.g. WooCommerce store, Notes, FakeStore). When users ask to view or modify store products, orders, notes, etc., call the respective tools. Always provide clear, helpful markdown summaries of tool results.`,
+      content: `You are VYNN, an autonomous AI assistant for the WooCommerce & MCP Gateway platform. You have access to tools across connected systems (e.g. WooCommerce store, Notes, FakeStore). When users ask to view or modify store products, orders, notes, etc., call the respective tools. Always provide clear, helpful markdown summaries of tool results.`,
     },
     ...messages,
   ];

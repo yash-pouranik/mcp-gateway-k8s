@@ -3,7 +3,6 @@ import { api, ActivityItem } from '../api';
 import ReactMarkdown from 'react-markdown';
 import {
   Send,
-  Bot,
   User,
   Sparkles,
   Trash2,
@@ -15,7 +14,6 @@ import {
   Check,
   AlertCircle,
   Square,
-  Terminal,
 } from 'lucide-react';
 
 interface ChatMessage {
@@ -114,8 +112,8 @@ const ExecutionTimeline: React.FC<{
         <div className="mt-2 rounded-xl bg-[#222222] border border-[#333333] p-3 text-xs space-y-2.5 transition-all shadow-inner">
           <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 border-b border-[#2e2e2e] pb-1.5 mb-1.5">
             <span className="flex items-center space-x-1.5">
-              <Terminal className="w-3.5 h-3.5 text-cf-orange" />
-              <span>Agent Execution Activity</span>
+              <img src="/vynn_ai_logo.png" alt="VYNN" className="w-3.5 h-3.5 object-contain" />
+              <span>VYNN Execution Activity</span>
             </span>
             {isStreaming ? (
               <span className="flex items-center space-x-1 text-cf-orange">
@@ -199,7 +197,7 @@ export const ChatView: React.FC = () => {
       id: 'welcome',
       role: 'assistant',
       content:
-        'Welcome! I am **Urumi Agent**, connected directly to the **MCP Gateway**. I can autonomously execute tools across WooCommerce, FakeStore, and Team Notes. What would you like to inspect or manage?',
+        'Welcome! I am **VYNN**, your autonomous AI assistant connected directly to the **MCP Gateway**. I can execute tools across WooCommerce, FakeStore, and Team Notes. What would you like to inspect or manage?',
       timestamp: new Date(),
     },
   ]);
@@ -427,12 +425,12 @@ export const ChatView: React.FC = () => {
       {/* Top Studio Bar (Preserved) */}
       <div className="px-6 py-2.5 bg-[#252525] border-b border-[#333333] flex items-center justify-between flex-shrink-0">
         <div className="flex items-center space-x-2.5">
-          <div className="p-1 rounded-md bg-[#2d2d2d] border border-[#3d3d3d] text-cf-orange">
-            <Bot className="w-3.5 h-3.5" />
+          <div className="w-7 h-7 rounded-lg bg-[#272727] border border-cf-orange/30 flex items-center justify-center p-1 shadow-sm">
+            <img src="/vynn_ai_logo.png" alt="VYNN Logo" className="w-full h-full object-contain drop-shadow" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-medium text-zinc-200 tracking-tight">AI Agent Studio</span>
+              <span className="text-xs font-semibold text-white tracking-tight">VYNN Studio</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
               <span className="text-[10px] font-mono text-zinc-400">Autonomous Tool Loop Active</span>
             </div>
@@ -457,20 +455,20 @@ export const ChatView: React.FC = () => {
             return (
               <div key={m.id} className="group relative flex space-x-4">
                 <div
-                  className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+                  className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium overflow-hidden ${
                     isUser
                       ? 'bg-[#333333] text-zinc-200 border border-[#444444]'
-                      : 'bg-[#2a241f] text-cf-orange border border-cf-orange/25'
+                      : 'bg-[#252525] border border-cf-orange/35 p-1 shadow-sm'
                   }`}
                 >
-                  {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                  {isUser ? <User className="w-4 h-4" /> : <img src="/vynn_ai_logo.png" alt="VYNN" className="w-full h-full object-contain drop-shadow" />}
                 </div>
 
                 <div className="flex-1 space-y-1.5 overflow-hidden pt-0.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <span className="text-xs font-medium text-zinc-300">
-                        {isUser ? 'You' : 'Urumi Agent'}
+                        {isUser ? 'You' : 'VYNN'}
                       </span>
                       <span className="text-[11px] font-mono text-zinc-500">
                         {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -559,7 +557,7 @@ export const ChatView: React.FC = () => {
                       {/* Fallback spinner while awaiting initial activity */}
                       {m.isStreaming && !m.content && (!m.activities || m.activities.length === 0) && (
                         <div className="flex items-center space-x-2 text-xs text-zinc-400 font-mono py-1">
-                          <Loader2 className="w-3.5 h-3.5 text-cf-orange animate-spin" />
+                          <img src="/vynn_ai_logo.png" alt="VYNN" className="w-4 h-4 object-contain animate-pulse" />
                           <span>Thinking & resolving tool calls...</span>
                         </div>
                       )}
@@ -607,7 +605,7 @@ export const ChatView: React.FC = () => {
               disabled={loading}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Reply to Urumi Agent or ask to manage WooCommerce store, products, or notes..."
+              placeholder="Reply to VYNN or ask to manage WooCommerce store, products, or notes..."
               className="w-full px-2.5 py-1.5 pr-12 bg-transparent text-[#f2f2f2] placeholder-zinc-500 text-[15px] leading-relaxed resize-none focus:outline-none disabled:opacity-50 max-h-[200px]"
             />
             <div className="flex items-center justify-between pt-1 px-1">
@@ -641,7 +639,7 @@ export const ChatView: React.FC = () => {
 
           <div className="text-center">
             <span className="text-[11px] text-zinc-500">
-              Agent autonomously executes tools across connected MCP servers with user-attributed audit logging.
+              VYNN autonomously executes tools across connected MCP servers with user-attributed audit logging.
             </span>
           </div>
         </div>
