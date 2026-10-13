@@ -142,6 +142,24 @@ export const api = {
     return res.json();
   },
 
+  async updateServer(id: string, payload: {
+    name?: string;
+    url?: string;
+    credentialHeader?: string;
+    credentialValue?: string;
+  }): Promise<{ server: McpServer }> {
+    const res = await fetch(`/api/servers/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update server');
+    }
+    return res.json();
+  },
+
   async getServerTools(id: string): Promise<{ tools: McpTool[] }> {
     const res = await fetch(`/api/servers/${id}/tools`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to load server tools');

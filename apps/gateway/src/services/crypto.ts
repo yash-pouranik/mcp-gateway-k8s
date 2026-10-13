@@ -57,12 +57,12 @@ export function hashApiKey(key: string): string {
 
 /**
  * Generate a new random API key.
- * Format: mcp_live_<32 hex chars>
+ * Format: urumi_live_<32 hex chars>
  */
-export function generateApiKey(): { rawKey: string; keyPrefix: string; keyHash: string } {
+export function generateApiKey(prefix = process.env.API_KEY_PREFIX || 'urumi_live_'): { rawKey: string; keyPrefix: string; keyHash: string } {
   const randomHex = crypto.randomBytes(16).toString('hex'); // 32 hex chars
-  const rawKey = `mcp_live_${randomHex}`;
-  const keyPrefix = `mcp_live_${randomHex.slice(0, 8)}`;
+  const rawKey = `${prefix}${randomHex}`;
+  const keyPrefix = `${prefix}${randomHex.slice(0, 8)}`;
   const keyHash = hashApiKey(rawKey);
   return { rawKey, keyPrefix, keyHash };
 }

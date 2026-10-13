@@ -1,6 +1,6 @@
 import React from 'react';
 import { User } from '../api';
-import { ShieldCheck, LogOut, Server, Key, FileText, MessageSquare } from 'lucide-react';
+import { LogOut, Server, Key, Terminal, Cpu } from 'lucide-react';
 
 interface NavbarProps {
   user: User;
@@ -15,87 +15,68 @@ export const Navbar: React.FC<NavbarProps> = ({
   onTabChange,
   onLogout,
 }) => {
+  const tabs = [
+    { id: 'servers', label: 'Upstream MCP', icon: Server },
+    { id: 'keys', label: 'API Keys', icon: Key },
+    { id: 'audit', label: 'Audit Trail', icon: Terminal },
+    { id: 'chat', label: 'AI Agent', icon: Cpu },
+  ] as const;
+
   return (
-    <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-40">
+    <header className="bg-black/90 backdrop-blur-md border-b border-zinc-800 sticky top-0 z-40 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-3">
-            <div className="bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20 text-emerald-400">
-              <ShieldCheck className="w-6 h-6" />
+          {/* Logo / Brand */}
+          <div className="flex items-center space-x-3.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cf-orange to-amber-600 flex items-center justify-center text-black font-black text-sm shadow-md shadow-cf-orange/20">
+              ⚡
             </div>
-            <div>
-              <span className="font-bold text-lg text-white tracking-tight">MCP Gateway</span>
-              <span className="ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                k8s cluster
+            <div className="flex items-center space-x-2">
+              <span className="font-bold text-base text-white tracking-tight">MCP Gateway</span>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-zinc-900 text-cf-orange border border-cf-orange/30">
+                k8s
               </span>
             </div>
           </div>
 
-          <nav className="flex space-x-1 sm:space-x-2">
-            <button
-              onClick={() => onTabChange('servers')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition ${
-                currentTab === 'servers'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-300 hover:bg-slate-700 hover:text-white'
-              }`}
-            >
-              <Server className="w-4 h-4" />
-              <span>Upstream Servers</span>
-            </button>
-
-            <button
-              onClick={() => onTabChange('keys')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition ${
-                currentTab === 'keys'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-300 hover:bg-slate-700 hover:text-white'
-              }`}
-            >
-              <Key className="w-4 h-4" />
-              <span>API Keys</span>
-            </button>
-
-            <button
-              onClick={() => onTabChange('audit')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition ${
-                currentTab === 'audit'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-300 hover:bg-slate-700 hover:text-white'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>Audit Log</span>
-            </button>
-
-            <button
-              onClick={() => onTabChange('chat')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition ${
-                currentTab === 'chat'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-300 hover:bg-slate-700 hover:text-white'
-              }`}
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>AI Agent Chat</span>
-            </button>
+          {/* Kumo-style Segmented Tab Switcher */}
+          <nav className="flex items-center bg-zinc-900/90 p-1 rounded-xl border border-zinc-800">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = currentTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    isActive
+                      ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/60'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-cf-orange' : 'text-zinc-400'}`} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </nav>
 
+          {/* User profile & Logout */}
           <div className="flex items-center space-x-4">
             <div className="text-right hidden sm:block">
-              <div className="text-sm font-medium text-white">{user.name}</div>
-              <div className="text-xs text-slate-400 capitalize flex items-center justify-end space-x-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <div className="text-xs font-medium text-white">{user.name}</div>
+              <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider flex items-center justify-end space-x-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-cf-orange"></span>
                 <span>{user.role}</span>
               </div>
             </div>
 
             <button
               onClick={onLogout}
-              title="Logout"
-              className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700/50 transition"
+              title="Sign Out"
+              className="p-2 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-zinc-900 border border-transparent hover:border-zinc-800 transition"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>

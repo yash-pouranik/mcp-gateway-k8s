@@ -13,7 +13,7 @@ postgres:
 gateway:
   image:
     repository: mcp-platform/gateway
-    tag: v1.0.1
+    tag: v1.0.2
     pullPolicy: IfNotPresent
   replicas: 1
   port: 3000
@@ -27,7 +27,7 @@ gateway:
 dashboard:
   image:
     repository: mcp-platform/dashboard
-    tag: v1.0.0
+    tag: v1.0.1
     pullPolicy: IfNotPresent
   replicas: 1
   port: 80

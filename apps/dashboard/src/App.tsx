@@ -39,8 +39,8 @@ export const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500 font-mono text-sm">
-        Initializing Gateway Dashboard...
+      <div className="min-h-screen bg-black flex items-center justify-center text-zinc-500 font-mono text-xs">
+        Initializing MCP Gateway...
       </div>
     );
   }
@@ -50,7 +50,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-black text-zinc-100 flex flex-col font-sans selection:bg-orange-500/20 selection:text-orange-300">
       <Navbar
         user={user}
         currentTab={currentTab}
@@ -58,7 +58,7 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-7">
         {currentTab === 'servers' && <ServersView />}
         {currentTab === 'keys' && <ApiKeysView />}
         {currentTab === 'audit' && <AuditLogView />}

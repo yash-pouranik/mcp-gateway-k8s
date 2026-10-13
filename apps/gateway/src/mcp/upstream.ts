@@ -161,6 +161,28 @@ class UpstreamManager {
       return false;
     }
   }
+
+  /**
+   * Fetch tools for a single server
+   */
+  async listServerTools(server: {
+    id: string;
+    slug: string;
+    url: string;
+    credentialHeader?: string | null;
+    credentialValueEncrypted?: string | null;
+  }): Promise<UpstreamTool[]> {
+    const listResult = await this.jsonRpcCall(server, 'tools/list');
+    const tools = listResult?.tools || [];
+    return tools.map((tool: any) => ({
+      originalName: tool.name,
+      gatewayName: `${server.slug}__${tool.name}`,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      serverId: server.id,
+      serverSlug: server.slug,
+    }));
+  }
 }
 
 export const upstreamManager = new UpstreamManager();

@@ -3,6 +3,7 @@ import { prisma } from '../db.js';
 import { requireUserAuth, requireAdmin } from '../middleware/auth.js';
 import { encryptCredential } from '../services/crypto.js';
 import { validateServerUrl } from '../services/ssrf.js';
+import { upstreamManager } from '../mcp/upstream.js';
 
 const router = Router();
 
@@ -131,6 +132,71 @@ router.delete('/:id', requireUserAuth, requireAdmin, async (req: Request, res: R
   await prisma.mcpServer.delete({ where: { id } });
 
   res.json({ message: 'Server deleted successfully' });
+});
+
+// GET /api/servers/:id/tools (Inspect tools of a specific server)
+router.get('/:id/tools', requireUserAuth, async (req: Request, res: Response): Promise<void> => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const server = await prisma.mcpServer.findUnique({ where: { id } });
+
+  if (!server) {
+    res.status(404).json({ error: 'Server not found' });
+    return;
+  }
+
+  try {
+    const tools = await upstreamManager.listServerTools(server);
+    res.json({ tools });
+  } catch (err: any) {
+    res.status(502).json({ error: `Could not fetch tools from upstream server: ${err.message}` });
+  }
+});
+
+// PUT /api/servers/:id (Update server configuration - Admin only)
+router.put('/:id', requireUserAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const server = await prisma.mcpServer.findUnique({ where: { id } });
+
+  if (!server) {
+    res.status(404).json({ error: 'Server not found' });
+    return;
+  }
+
+  const { name, url, credentialHeader, credentialValue } = req.body;
+
+  if (url) {
+    try {
+      await validateServerUrl(url);
+    } catch (err: any) {
+      res.status(400).json({ error: `URL validation failed: ${err.message}` });
+      return;
+    }
+  }
+
+  const updateData: any = {};
+  if (name) updateData.name = name;
+  if (url) updateData.url = url;
+  if (credentialHeader !== undefined) updateData.credentialHeader = credentialHeader;
+  if (credentialValue && typeof credentialValue === 'string') {
+    updateData.credentialValueEncrypted = encryptCredential(credentialValue);
+  }
+
+  const updated = await prisma.mcpServer.update({
+    where: { id },
+    data: updateData,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      url: true,
+      credentialHeader: true,
+      enabled: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+
+  res.json({ server: updated });
 });
 
 export default router;
