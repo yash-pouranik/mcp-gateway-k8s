@@ -167,7 +167,7 @@ export const ChatView: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <span className="text-xs font-medium text-zinc-300">
-                        {isUser ? 'You' : 'Claude Agent'}
+                        {isUser ? 'You' : 'Urumi Agent'}
                       </span>
                       <span className="text-[11px] font-mono text-zinc-500">
                         {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

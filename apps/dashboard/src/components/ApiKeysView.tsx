@@ -244,7 +244,7 @@ export const ApiKeysView: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Claude Code Developer Key"
+                    placeholder="e.g. Production MCP Client Key"
                     value={keyName}
                     onChange={(e) => setKeyName(e.target.value)}
                     className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-cf-orange"
