@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { api, McpServer, McpTool } from '../api';
+import { api, McpServer, McpTool, User } from '../api';
 import { RefreshCw, Plus, Wrench, Edit3, X, Check, ShieldAlert } from 'lucide-react';
 
-export const ServersView: React.FC = () => {
+interface ServersViewProps {
+  user?: User;
+}
+
+export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
   const [servers, setServers] = useState<McpServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -155,13 +159,15 @@ export const ServersView: React.FC = () => {
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Sync Status</span>
           </button>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="py-2 px-3.5 rounded-lg bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center space-x-2 shadow-sm shadow-cf-orange/20"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Register Upstream</span>
-          </button>
+          {(!user || user.role === 'admin') && (
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="py-2 px-3.5 rounded-lg bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center space-x-2 shadow-sm shadow-cf-orange/20"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Register Upstream</span>
+            </button>
+          )}
         </div>
       </div>
 

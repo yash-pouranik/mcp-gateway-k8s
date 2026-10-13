@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { api, TeamMember } from '../api';
+import { api, TeamMember, User } from '../api';
 import { Users, Plus, Key, Calendar, AlertCircle, RefreshCw, X, Mail } from 'lucide-react';
 
-export const MembersView: React.FC = () => {
+interface MembersViewProps {
+  user?: User;
+}
+
+export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,16 +90,18 @@ export const MembersView: React.FC = () => {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-cf-orange' : ''}`} />
           </button>
-          <button
-            onClick={() => {
-              setModalError(null);
-              setShowInviteModal(true);
-            }}
-            className="flex items-center space-x-2 px-3.5 py-2 bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white rounded-xl text-xs font-semibold shadow-md shadow-cf-orange/20 transition"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Invite Member</span>
-          </button>
+          {(!user || user.role === 'admin') && (
+            <button
+              onClick={() => {
+                setModalError(null);
+                setShowInviteModal(true);
+              }}
+              className="flex items-center space-x-2 px-3.5 py-2 bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white rounded-xl text-xs font-semibold shadow-md shadow-cf-orange/20 transition"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Invite Member</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -65,6 +65,22 @@ export interface AuditLog {
   };
 }
 
+export interface ActivityItem {
+  id: string;
+  type: 'explore_tools' | 'reasoning' | 'tool_call' | 'process_output' | 'generating_response';
+  title: string;
+  status: 'running' | 'completed' | 'failed';
+  toolName?: string;
+  cleanTool?: string;
+  server?: string;
+  inputSummary?: Record<string, any>;
+  outputSummary?: string;
+  error?: string;
+  startTime: number;
+  endTime?: number;
+  durationMs?: number;
+}
+
 const getAuthHeaders = () => {
   const token = localStorage.getItem('mcp_token');
   return {
@@ -191,6 +207,84 @@ export const api = {
     const res = await fetch(`/api/audit?${query.toString()}`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to load audit logs');
     return res.json();
+  },
+
+  async streamChatMessage(
+    messages: Array<{ role: string; content: string }>,
+    onEvent: (event: string, data: any) => void,
+    signal?: AbortSignal
+  ): Promise<{ content: string; totalDurationMs?: number }> {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify({ messages, stream: true }),
+      signal,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Request failed with status ${res.status}`);
+    }
+
+    if (res.headers.get('content-type')?.includes('application/json')) {
+      const data = await res.json();
+      onEvent('assistant_response_completed', { content: data.content });
+      return { content: data.content };
+    }
+
+    if (!res.body) {
+      throw new Error('ReadableStream not supported by response');
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let finalContent = '';
+    let totalDurationMs: number | undefined;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+
+      for (const block of parts) {
+        if (!block.trim()) continue;
+        const lines = block.split('\n');
+        let eventType = 'message';
+        let dataStr = '';
+
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            eventType = line.substring(6).trim();
+          } else if (line.startsWith('data:')) {
+            dataStr = line.substring(5).trim();
+          }
+        }
+
+        if (dataStr) {
+          try {
+            const parsed = JSON.parse(dataStr);
+            onEvent(eventType, parsed);
+            if (eventType === 'assistant_response_chunk' && parsed.delta) {
+              finalContent += parsed.delta;
+            } else if (eventType === 'assistant_response_completed') {
+              if (parsed.content) finalContent = parsed.content;
+              if (parsed.totalDurationMs) totalDurationMs = parsed.totalDurationMs;
+            }
+          } catch (e) {
+            console.error('Error parsing SSE event data', e);
+          }
+        }
+      }
+    }
+
+    return { content: finalContent, totalDurationMs };
   },
 
   async sendChatMessage(messages: Array<{ role: string; content: string }>): Promise<{

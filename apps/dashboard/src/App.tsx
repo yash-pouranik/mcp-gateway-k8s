@@ -60,11 +60,11 @@ export const App: React.FC = () => {
       />
 
       <main className={`flex-1 w-full ${currentTab === 'chat' ? 'min-h-0 overflow-hidden p-0 flex flex-col' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7'}`}>
-        {currentTab === 'servers' && <ServersView />}
+        {currentTab === 'servers' && <ServersView user={user} />}
         {currentTab === 'keys' && <ApiKeysView />}
         {currentTab === 'audit' && <AuditLogView />}
         {currentTab === 'chat' && <ChatView />}
-        {currentTab === 'members' && <MembersView />}
+        {currentTab === 'members' && <MembersView user={user} />}
       </main>
     </div>
   );
