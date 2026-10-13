@@ -8,11 +8,17 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"EB Garamond"', 'serif', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        serif: ['"EB Garamond"', 'serif'],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       colors: {
+        claude: {
+          bg: '#1e1e1e', // Claude dark mode warm charcoal grey
+          surface: '#262626',
+          input: '#2b2b2b',
+          border: '#383838',
+          hover: '#333333',
+        },
         cf: {
           orange: '#f38020',
           hover: '#fa8c16',

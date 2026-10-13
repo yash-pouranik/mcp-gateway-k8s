@@ -6,11 +6,12 @@ import { ServersView } from './components/ServersView';
 import { ApiKeysView } from './components/ApiKeysView';
 import { AuditLogView } from './components/AuditLogView';
 import { ChatView } from './components/ChatView';
+import { MembersView } from './components/MembersView';
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentTab, setCurrentTab] = useState<'servers' | 'keys' | 'audit' | 'chat'>('servers');
+  const [currentTab, setCurrentTab] = useState<'servers' | 'keys' | 'audit' | 'chat' | 'members'>('servers');
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -50,7 +51,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className={`bg-black text-zinc-100 flex flex-col font-sans selection:bg-orange-500/20 selection:text-orange-300 ${currentTab === 'chat' ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
+    <div className={`text-zinc-100 flex flex-col font-sans selection:bg-orange-500/20 selection:text-orange-300 ${currentTab === 'chat' ? 'h-screen overflow-hidden bg-claude-bg' : 'min-h-screen bg-black'}`}>
       <Navbar
         user={user}
         currentTab={currentTab}
@@ -63,6 +64,7 @@ export const App: React.FC = () => {
         {currentTab === 'keys' && <ApiKeysView />}
         {currentTab === 'audit' && <AuditLogView />}
         {currentTab === 'chat' && <ChatView />}
+        {currentTab === 'members' && <MembersView />}
       </main>
     </div>
   );

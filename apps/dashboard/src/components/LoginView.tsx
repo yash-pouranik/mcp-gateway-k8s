@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { api, User } from '../api';
-import { Lock, Mail, ArrowRight, UserCheck } from 'lucide-react';
+import { Lock, Mail, ArrowRight, UserCheck, Zap } from 'lucide-react';
 
 interface LoginViewProps {
   onLoginSuccess: (user: User) => void;
@@ -37,7 +37,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       <div className="max-w-md w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-8 shadow-2xl">
         <div className="text-center mb-7">
           <div className="inline-flex p-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-cf-orange mb-3.5 shadow-sm">
-            <span className="text-2xl font-black">⚡</span>
+            <Zap className="w-6 h-6 text-cf-orange fill-cf-orange" />
           </div>
           <h1 className="text-xl font-bold text-white tracking-tight">MCP Gateway Console</h1>
           <p className="text-xs text-zinc-400 mt-1">

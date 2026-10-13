@@ -16,7 +16,7 @@ export const ChatView: React.FC = () => {
       id: 'welcome',
       role: 'assistant',
       content:
-        '👋 Welcome! I am your AI assistant connected to the **MCP Gateway**. I can autonomously execute tools across WooCommerce, FakeStore, and Team Notes. What would you like to inspect or manage?',
+        'Welcome! I am your AI assistant connected to the **MCP Gateway**. I can autonomously execute tools across WooCommerce, FakeStore, and Team Notes. What would you like to inspect or manage?',
       timestamp: new Date(),
     },
   ]);
@@ -67,7 +67,7 @@ export const ChatView: React.FC = () => {
       const errorMsg: ChatMessage = {
         id: `assistant-err-${Date.now()}`,
         role: 'assistant',
-        content: `⚠️ **Agent Error:** ${err.message || 'Failed to reach AI agent'}`,
+        content: `**Agent Error:** ${err.message || 'Failed to reach AI agent'}`,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -95,17 +95,41 @@ export const ChatView: React.FC = () => {
     { title: 'Create Note', prompt: 'Create a note titled "Sprint Planning" with content "Review MCP Gateway k8s architecture".' },
   ];
 
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  // Auto-resize textarea like Claude
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  }, [input]);
+
   return (
-    <div className="flex flex-col h-full w-full bg-black">
-      {/* Top Studio Bar */}
-      <div className="px-6 py-2.5 bg-zinc-950/80 border-b border-zinc-800/80 flex items-center justify-between flex-shrink-0">
+    <div className="flex flex-col h-full w-full bg-[#1e1e1e]">
+      {/* Top Studio Bar (Preserved) */}
+      <div className="px-6 py-2.5 bg-[#252525] border-b border-[#333333] flex items-center justify-between flex-shrink-0">
         <div className="flex items-center space-x-2.5">
-          <div className="p-1 rounded-md bg-zinc-900 border border-zinc-800 text-cf-orange">
+          <div className="p-1 rounded-md bg-[#2d2d2d] border border-[#3d3d3d] text-cf-orange">
             <Bot className="w-3.5 h-3.5" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-semibold text-white tracking-tight">AI Agent Studio</span>
+              <span className="text-xs font-medium text-zinc-200 tracking-tight">AI Agent Studio</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
               <span className="text-[10px] font-mono text-zinc-400">Autonomous Tool Loop Active</span>
             </div>
@@ -114,7 +138,7 @@ export const ChatView: React.FC = () => {
 
         <button
           onClick={handleClear}
-          className="px-2.5 py-1 text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-zinc-800 rounded-md transition text-xs flex items-center space-x-1.5 font-medium"
+          className="px-2.5 py-1 text-zinc-400 hover:text-white hover:bg-[#303030] border border-transparent hover:border-[#404040] rounded-md transition text-xs flex items-center space-x-1.5 font-medium"
           title="New Chat / Reset Conversation"
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -122,63 +146,78 @@ export const ChatView: React.FC = () => {
         </button>
       </div>
 
-      {/* Centered Chat Container (Claude / ChatGPT style) */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 scroll-smooth">
-        <div className="max-w-3xl mx-auto space-y-6">
+      {/* Centered Conversation Area (Claude-style Charcoal Canvas) */}
+      <div className="flex-1 overflow-y-auto px-4 py-8 scroll-smooth">
+        <div className="max-w-[820px] mx-auto space-y-7">
           {messages.map((m) => {
             const isUser = m.role === 'user';
             return (
-              <div key={m.id} className="flex space-x-4">
+              <div key={m.id} className="group relative flex space-x-4">
                 <div
                   className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
                     isUser
-                      ? 'bg-zinc-800 text-zinc-200 border border-zinc-700'
-                      : 'bg-cf-orange/15 text-cf-orange border border-cf-orange/30'
+                      ? 'bg-[#333333] text-zinc-200 border border-[#444444]'
+                      : 'bg-[#2a241f] text-cf-orange border border-cf-orange/25'
                   }`}
                 >
                   {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                 </div>
 
-                <div className="flex-1 space-y-1 overflow-hidden pt-1">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-semibold text-white">
-                      {isUser ? 'You' : 'Agent'}
-                    </span>
-                    <span className="text-[10px] font-mono text-zinc-500">
-                      {m.timestamp.toLocaleTimeString()}
-                    </span>
+                <div className="flex-1 space-y-1.5 overflow-hidden pt-0.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-medium text-zinc-300">
+                        {isUser ? 'You' : 'Claude Agent'}
+                      </span>
+                      <span className="text-[11px] font-mono text-zinc-500">
+                        {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+
+                    {!isUser && (
+                      <button
+                        onClick={() => handleCopy(m.content, m.id)}
+                        className="opacity-0 group-hover:opacity-100 transition p-1 text-zinc-400 hover:text-zinc-200 hover:bg-[#2d2d2d] rounded text-[11px] flex items-center space-x-1"
+                        title="Copy Response"
+                      >
+                        <span>{copiedId === m.id ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    )}
                   </div>
 
                   {isUser ? (
-                    <div className="text-sm text-zinc-100 whitespace-pre-wrap leading-relaxed font-sans">
+                    <div className="text-[15px] text-[#f0f0f0] whitespace-pre-wrap leading-[1.65] font-sans">
                       {m.content}
                     </div>
                   ) : (
-                    <div className="prose prose-invert prose-sm max-w-none text-zinc-300 leading-relaxed font-sans">
+                    <div className="prose prose-invert prose-base max-w-none text-[#d4d4d4] leading-[1.7] font-sans">
                       <ReactMarkdown
                         components={{
-                          h1: ({ ...props }) => <h1 className="text-base font-bold text-white mb-2 mt-4" {...props} />,
-                          h2: ({ ...props }) => <h2 className="text-sm font-bold text-white mb-2 mt-3" {...props} />,
-                          h3: ({ ...props }) => <h3 className="text-xs font-bold text-cf-orange mb-1.5 mt-2" {...props} />,
-                          p: ({ ...props }) => <p className="mb-2.5 leading-relaxed text-sm text-zinc-200" {...props} />,
-                          ul: ({ ...props }) => <ul className="list-disc pl-5 mb-3 space-y-1 text-sm text-zinc-300" {...props} />,
-                          ol: ({ ...props }) => <ol className="list-decimal pl-5 mb-3 space-y-1 text-sm text-zinc-300" {...props} />,
-                          li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
+                          h1: ({ ...props }) => <h1 className="text-lg font-semibold text-[#f5f5f5] mb-2.5 mt-5" {...props} />,
+                          h2: ({ ...props }) => <h2 className="text-base font-semibold text-[#f5f5f5] mb-2 mt-4" {...props} />,
+                          h3: ({ ...props }) => <h3 className="text-sm font-semibold text-cf-orange mb-1.5 mt-3" {...props} />,
+                          p: ({ ...props }) => <p className="mb-3 leading-[1.7] text-[15px] text-[#d6d6d6]" {...props} />,
+                          ul: ({ ...props }) => <ul className="list-disc pl-5 mb-3 space-y-1 text-[15px] text-[#d6d6d6]" {...props} />,
+                          ol: ({ ...props }) => <ol className="list-decimal pl-5 mb-3 space-y-1 text-[15px] text-[#d6d6d6]" {...props} />,
+                          li: ({ ...props }) => <li className="leading-[1.65]" {...props} />,
                           strong: ({ ...props }) => <strong className="font-semibold text-white" {...props} />,
                           a: ({ ...props }) => (
                             <a
-                              className="text-cf-orange hover:text-amber-400 underline font-medium"
+                              className="text-cf-orange hover:text-amber-400 underline font-medium underline-offset-2"
                               target="_blank"
                               rel="noopener noreferrer"
                               {...props}
                             />
                           ),
                           code: ({ ...props }) => (
-                            <code className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-cf-orange font-mono text-xs" {...props} />
+                            <code className="px-1.5 py-0.5 rounded bg-[#2b2b2b] border border-[#3a3a3a] text-cf-orange font-mono text-[13px]" {...props} />
+                          ),
+                          pre: ({ ...props }) => (
+                            <pre className="p-3.5 my-3 rounded-xl bg-[#171717] border border-[#2d2d2d] overflow-x-auto text-[13px] font-mono leading-relaxed text-zinc-300" {...props} />
                           ),
                           img: ({ src, alt }) => (
-                            <div className="my-2.5 inline-block group relative cursor-pointer" onClick={() => src && setPreviewImage(src)}>
-                              <div className="w-48 h-36 rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 flex items-center justify-center relative shadow-sm group-hover:border-cf-orange/50 transition">
+                            <div className="my-3 inline-block group relative cursor-pointer" onClick={() => src && setPreviewImage(src)}>
+                              <div className="w-52 h-40 rounded-xl overflow-hidden bg-[#262626] border border-[#383838] flex items-center justify-center relative shadow-md group-hover:border-cf-orange/50 transition">
                                 <img
                                   src={src}
                                   alt={alt || 'Embedded image'}
@@ -186,13 +225,13 @@ export const ChatView: React.FC = () => {
                                   loading="lazy"
                                 />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                                  <div className="p-1.5 rounded-full bg-black/80 text-white flex items-center space-x-1 text-[11px] font-sans px-2.5">
+                                  <div className="p-1.5 rounded-full bg-black/80 text-white flex items-center space-x-1.5 text-xs font-sans px-3">
                                     <ZoomIn className="w-3.5 h-3.5 text-cf-orange" />
                                     <span>Preview</span>
                                   </div>
                                 </div>
                               </div>
-                              {alt && <div className="text-[11px] text-zinc-500 mt-1 truncate max-w-[12rem]">{alt}</div>}
+                              {alt && <div className="text-xs text-zinc-400 mt-1.5 truncate max-w-[13rem]">{alt}</div>}
                             </div>
                           ),
                         }}
@@ -208,13 +247,13 @@ export const ChatView: React.FC = () => {
 
           {loading && (
             <div className="flex space-x-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cf-orange/15 text-cf-orange border border-cf-orange/30 flex items-center justify-center">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#2a241f] text-cf-orange border border-cf-orange/25 flex items-center justify-center">
                 <Bot className="w-4 h-4 animate-spin" />
               </div>
               <div className="flex-1 pt-1.5">
                 <div className="flex items-center space-x-2 text-xs text-zinc-400 font-mono">
                   <Loader2 className="w-3.5 h-3.5 text-cf-orange animate-spin" />
-                  <span>Executing autonomous tool loops via Gateway...</span>
+                  <span>Thinking & resolving tool calls...</span>
                 </div>
               </div>
             </div>
@@ -224,13 +263,13 @@ export const ChatView: React.FC = () => {
         </div>
       </div>
 
-      {/* Floating Bottom Prompt Bar (Claude / ChatGPT style) */}
-      <div className="p-4 bg-gradient-to-t from-black via-black/95 to-transparent flex-shrink-0">
-        <div className="max-w-3xl mx-auto space-y-3">
+      {/* Floating Bottom Claude Composer Dock */}
+      <div className="p-4 bg-gradient-to-t from-[#1e1e1e] via-[#1e1e1e]/95 to-transparent flex-shrink-0">
+        <div className="max-w-[820px] mx-auto space-y-3">
           {/* Quick prompt suggestions when conversation is fresh */}
           {messages.length <= 2 && (
             <div className="flex flex-wrap items-center gap-2">
-              <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 flex items-center space-x-1 mr-1">
+              <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-500 flex items-center space-x-1 mr-1">
                 <Sparkles className="w-3 h-3 text-cf-orange" />
                 <span>Suggestions:</span>
               </div>
@@ -239,7 +278,7 @@ export const ChatView: React.FC = () => {
                   key={idx}
                   type="button"
                   onClick={() => handleSend(p.prompt)}
-                  className="px-2.5 py-1 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] text-zinc-300 hover:text-white transition flex items-center space-x-1.5 group"
+                  className="px-3 py-1 rounded-full bg-[#2b2b2b] hover:bg-[#333333] border border-[#3d3d3d] text-xs text-zinc-300 hover:text-white transition flex items-center space-x-1.5 group"
                 >
                   <span>{p.title}</span>
                   <ArrowRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-cf-orange transition" />
@@ -248,35 +287,37 @@ export const ChatView: React.FC = () => {
             </div>
           )}
 
-          {/* Large Floating Input Card */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSend();
-            }}
-            className="relative flex items-center bg-zinc-900/90 hover:bg-zinc-900 border border-zinc-800 focus-within:border-cf-orange/60 rounded-2xl shadow-lg transition-all"
-          >
-            <input
-              type="text"
+          {/* Claude Multiline Rounded Composer */}
+          <div className="relative bg-[#262626] hover:bg-[#282828] border border-[#3a3a3a] focus-within:border-cf-orange/70 rounded-2xl shadow-xl transition-all p-2.5">
+            <textarea
+              ref={textareaRef}
+              rows={1}
               value={input}
               disabled={loading}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything across WooCommerce, store orders, products, or team notes..."
-              className="w-full px-4 py-3.5 pr-14 bg-transparent text-white placeholder-zinc-500 text-sm focus:outline-none disabled:opacity-50"
+              onKeyDown={handleKeyDown}
+              placeholder="Reply to Agent or ask to manage WooCommerce store, products, or notes..."
+              className="w-full px-2.5 py-1.5 pr-12 bg-transparent text-[#f2f2f2] placeholder-zinc-500 text-[15px] leading-relaxed resize-none focus:outline-none disabled:opacity-50 max-h-[200px]"
             />
-            <button
-              type="submit"
-              disabled={loading || !input.trim()}
-              className="absolute right-2.5 p-2 bg-cf-orange hover:bg-cf-hover active:bg-cf-dark disabled:opacity-30 disabled:hover:bg-cf-orange text-white rounded-xl transition shadow-sm"
-              title="Send prompt"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
+            <div className="flex items-center justify-between pt-1 px-1">
+              <span className="text-[11px] text-zinc-500 font-sans">
+                Use <kbd className="px-1 py-0.5 rounded bg-[#1e1e1e] border border-[#383838] text-[10px] text-zinc-400">Shift + Enter</kbd> for new line
+              </span>
+              <button
+                type="button"
+                onClick={() => handleSend()}
+                disabled={loading || !input.trim()}
+                className="p-2 bg-cf-orange hover:bg-cf-hover active:bg-cf-dark disabled:opacity-30 disabled:hover:bg-cf-orange text-white rounded-xl transition shadow-sm"
+                title="Send message (Enter)"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
 
           <div className="text-center">
             <span className="text-[11px] text-zinc-500">
-              Agent executes live tools across Kubernetes-hosted MCP servers with session audit attribution.
+              Agent autonomously executes tools across connected MCP servers with user-attributed audit logging.
             </span>
           </div>
         </div>

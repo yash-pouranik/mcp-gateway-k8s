@@ -1,11 +1,11 @@
 import React from 'react';
 import { User } from '../api';
-import { LogOut, Server, Key, Terminal, Cpu } from 'lucide-react';
+import { LogOut, Server, Key, Terminal, Cpu, Zap, Users } from 'lucide-react';
 
 interface NavbarProps {
   user: User;
-  currentTab: 'servers' | 'keys' | 'audit' | 'chat';
-  onTabChange: (tab: 'servers' | 'keys' | 'audit' | 'chat') => void;
+  currentTab: 'servers' | 'keys' | 'audit' | 'chat' | 'members';
+  onTabChange: (tab: 'servers' | 'keys' | 'audit' | 'chat' | 'members') => void;
   onLogout: () => void;
 }
 
@@ -20,6 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'keys', label: 'API Keys', icon: Key },
     { id: 'audit', label: 'Audit Trail', icon: Terminal },
     { id: 'chat', label: 'AI Agent', icon: Cpu },
+    { id: 'members', label: 'Team', icon: Users },
   ] as const;
 
   return (
@@ -29,7 +30,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Logo / Brand */}
           <div className="flex items-center space-x-3.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cf-orange to-amber-600 flex items-center justify-center text-black font-black text-sm shadow-md shadow-cf-orange/20">
-              ⚡
+              <Zap className="w-4 h-4 text-black fill-black" />
             </div>
             <div className="flex items-center space-x-2">
               <span className="font-bold text-base text-white tracking-tight">MCP Gateway</span>

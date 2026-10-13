@@ -5,6 +5,17 @@ export interface User {
   role: 'admin' | 'member';
 }
 
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'member';
+  createdAt: string;
+  _count?: {
+    apiKeys: number;
+  };
+}
+
 export interface ApiKey {
   id: string;
   name: string;
@@ -195,6 +206,30 @@ export const api = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Chat request failed');
+    }
+    return res.json();
+  },
+
+  async getMembers(): Promise<{ members: TeamMember[] }> {
+    const res = await fetch('/api/members', { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Failed to load team members');
+    return res.json();
+  },
+
+  async createMember(payload: {
+    name: string;
+    email: string;
+    password: string;
+    role: 'admin' | 'member';
+  }): Promise<{ user: TeamMember }> {
+    const res = await fetch('/api/members', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to create member');
     }
     return res.json();
   },
