@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../api';
 import ReactMarkdown from 'react-markdown';
-import { Send, Bot, User, Sparkles, Trash2, Loader2, ArrowRight } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Trash2, Loader2, ArrowRight, X, ZoomIn } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -22,6 +22,7 @@ export const ChatView: React.FC = () => {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -175,6 +176,25 @@ export const ChatView: React.FC = () => {
                           code: ({ ...props }) => (
                             <code className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-cf-orange font-mono text-xs" {...props} />
                           ),
+                          img: ({ src, alt }) => (
+                            <div className="my-2.5 inline-block group relative cursor-pointer" onClick={() => src && setPreviewImage(src)}>
+                              <div className="w-48 h-36 rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 flex items-center justify-center relative shadow-sm group-hover:border-cf-orange/50 transition">
+                                <img
+                                  src={src}
+                                  alt={alt || 'Embedded image'}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                  loading="lazy"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                  <div className="p-1.5 rounded-full bg-black/80 text-white flex items-center space-x-1 text-[11px] font-sans px-2.5">
+                                    <ZoomIn className="w-3.5 h-3.5 text-cf-orange" />
+                                    <span>Preview</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {alt && <div className="text-[11px] text-zinc-500 mt-1 truncate max-w-[12rem]">{alt}</div>}
+                            </div>
+                          ),
                         }}
                       >
                         {m.content}
@@ -261,6 +281,30 @@ export const ChatView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Image Lightbox Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-10 right-0 p-1.5 rounded-full bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 transition"
+              title="Close Preview"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={previewImage}
+              alt="Enlarged preview"
+              className="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl border border-zinc-800"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
