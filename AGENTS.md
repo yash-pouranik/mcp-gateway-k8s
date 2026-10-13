@@ -117,10 +117,19 @@ helm template test-gw helm/charts/gateway -f helm/values-local.yaml
    - Containerized with Nginx static serving & reverse proxy to `/api` and `/mcp`.
    - Deployed live in cluster at `dashboard.localtest.me` (HTTP & HTTPS).
 
-### In Progress / Up Next
-1. **Hardening & Verification (Phase 6 & 7):**
-   - Apply NetworkPolicies matrix (`k8s/network-policies.yaml`).
-   - Create environment values files: `helm/values-local.yaml` and `helm/values-prod.yaml`.
-   - Run full 8-point Definition of Done verification sequence.
-   - Documentation deliverables: `README.md`, `docs/system-design.md`, and `docs/threat-model.md`.
+7. **Security Hardening & NetworkPolicies (`k8s/network-policies.yaml`):**
+   - Applied zero-trust default-deny ingress across `woocommerce`, `extra-mcps`, and `gateway` namespaces.
+   - Micro-segmented pinholes: MariaDB accepts port 3306 exclusively from WordPress; PostgreSQL accepts port 5432 exclusively from Gateway; Upstream MCPs accept port 3000 exclusively from Gateway.
+   - Public ingress to upstream MCPs verified completely inaccessible.
+
+8. **Helm Environment Values & Production Portability:**
+   - Authored `helm/values-local.yaml` for local k3d cluster execution.
+   - Authored `helm/values-prod.yaml` for production k3s VPS deployment (Let's Encrypt TLS, resource requests/limits, zero code changes).
+   - Validated dry-run templates across all 3 Helm charts with zero errors.
+
+9. **Documentation & Deliverables:**
+   - Root `README.md` with cluster bootstrapping and execution guide.
+   - Deep-dive `docs/system-design.md` architecture specification.
+   - Enterprise `docs/threat-model.md` threat model and SSRF analysis.
+   - Definition of Done test scenarios verified in cluster.
 
