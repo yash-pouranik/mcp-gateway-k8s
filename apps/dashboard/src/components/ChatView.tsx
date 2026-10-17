@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Plus,
   Cpu,
+  ChevronUp,
 } from 'lucide-react';
 
 interface ChatMessage {
@@ -219,6 +220,18 @@ export const ChatView: React.FC = () => {
   // Multi-Provider AI
   const [providers, setProviders] = useState<AiProviderInfo[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string>('auto');
+  const [providerDropdownOpen, setProviderDropdownOpen] = useState(false);
+  const providerDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (providerDropdownRef.current && !providerDropdownRef.current.contains(e.target as Node)) {
+        setProviderDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -854,32 +867,112 @@ export const ChatView: React.FC = () => {
               />
 
               <div className="flex flex-wrap items-center justify-between gap-2 pt-2 px-1 border-t border-[#313131]">
-                {/* Provider Selector Dock */}
+                {/* Provider Selector Dock (Custom Kumo Popover) */}
                 <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-[#1e1e1e] border border-[#383838]">
-                    <Cpu className="w-3 h-3 text-cf-orange" />
-                    <select
-                      value={selectedProvider}
-                      onChange={(e) => setSelectedProvider(e.target.value)}
-                      className="bg-transparent text-[11px] font-mono text-zinc-300 focus:outline-none cursor-pointer pr-1"
+                  <div className="relative" ref={providerDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setProviderDropdownOpen(!providerDropdownOpen)}
+                      className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-[#1e1e1e] hover:bg-[#252525] border transition text-[11px] font-mono ${
+                        providerDropdownOpen
+                          ? 'border-cf-orange/70 text-white shadow-sm'
+                          : 'border-[#383838] text-zinc-300 hover:text-white'
+                      }`}
                     >
-                      <option value="auto" className="bg-[#1e1e1e] text-zinc-100">
-                        ⚡ Auto Router (Smart Model Selection)
-                      </option>
-                      {providers.length > 0 ? (
-                        providers.map((p) => (
-                          <option key={p.name} value={p.name} className="bg-[#1e1e1e] text-zinc-100">
-                            {p.displayName} {p.supportsTools ? '(Actions/Tools)' : '(Free Chat)'}
-                          </option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="openai" className="bg-[#1e1e1e] text-zinc-100">OpenAI (GPT-6 Luna)</option>
-                          <option value="gemini" className="bg-[#1e1e1e] text-zinc-100">Google (Gemini 2.5 Flash-Lite)</option>
-                          <option value="groq" className="bg-[#1e1e1e] text-zinc-100">Groq (Llama 3.3 / Free)</option>
-                        </>
-                      )}
-                    </select>
+                      <Cpu className="w-3 h-3 text-cf-orange flex-shrink-0" />
+                      <span className="truncate max-w-[200px]">
+                        {selectedProvider === 'auto'
+                          ? '⚡ Auto Router'
+                          : providers.find((p) => p.name === selectedProvider)?.displayName || selectedProvider}
+                      </span>
+                      <ChevronUp
+                        className={`w-3 h-3 text-zinc-400 transition-transform duration-150 flex-shrink-0 ${
+                          providerDropdownOpen ? 'rotate-180 text-cf-orange' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {/* Floating Kumo Dropdown Menu (Opens upwards above composer) */}
+                    {providerDropdownOpen && (
+                      <div className="absolute bottom-[100%] mb-1.5 left-0 w-72 z-50 rounded-xl bg-[#1a1a1a] border border-zinc-700/80 shadow-2xl p-1.5 animate-in fade-in zoom-in-95 duration-100 font-sans">
+                        <div className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500 border-b border-zinc-800 mb-1">
+                          Select AI Engine & Route
+                        </div>
+                        <div className="space-y-0.5">
+                          {/* Auto Router Option */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedProvider('auto');
+                              setProviderDropdownOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition ${
+                              selectedProvider === 'auto'
+                                ? 'bg-cf-orange/15 text-cf-orange font-medium'
+                                : 'hover:bg-zinc-800/70 text-zinc-300'
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-center space-x-1.5 font-medium">
+                                <span>⚡ Auto Router</span>
+                                <span className="px-1.5 py-0.2 rounded bg-cf-orange/20 text-[9px] font-mono text-cf-orange uppercase">
+                                  Smart
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-zinc-500 font-sans mt-0.5">
+                                Intelligently switches based on query intent & tools
+                              </div>
+                            </div>
+                            {selectedProvider === 'auto' && <Check className="w-3.5 h-3.5 text-cf-orange flex-shrink-0" />}
+                          </button>
+
+                          {/* Dynamic / Fallback Providers */}
+                          {(providers.length > 0 ? providers : [
+                            { name: 'openai', displayName: 'OpenAI (GPT-6 Luna)', supportsTools: true, costTier: 'cheap' },
+                            { name: 'gemini', displayName: 'Google (Gemini 2.5 Flash-Lite)', supportsTools: true, costTier: 'cheap' },
+                            { name: 'groq', displayName: 'Groq (Llama 3.3 / Free)', supportsTools: false, costTier: 'free' },
+                          ]).map((p) => {
+                            const isSelected = selectedProvider === p.name;
+                            return (
+                              <button
+                                key={p.name}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedProvider(p.name);
+                                  setProviderDropdownOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition ${
+                                  isSelected
+                                    ? 'bg-cf-orange/15 text-cf-orange font-medium'
+                                    : 'hover:bg-zinc-800/70 text-zinc-300'
+                                }`}
+                              >
+                                <div>
+                                  <div className="flex items-center space-x-1.5 font-medium">
+                                    <span>{p.displayName}</span>
+                                    <span
+                                      className={`px-1.5 py-0.2 rounded text-[9px] font-mono uppercase ${
+                                        p.costTier === 'free'
+                                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/50'
+                                          : 'bg-zinc-800 text-zinc-400 border border-zinc-700/50'
+                                      }`}
+                                    >
+                                      {p.supportsTools ? 'Actions' : 'Free Chat'}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] text-zinc-500 font-sans mt-0.5">
+                                    {p.supportsTools
+                                      ? 'Executes WooCommerce & team tools with precision'
+                                      : 'Ultra-fast token response for Q&A and conversation'}
+                                  </div>
+                                </div>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-cf-orange flex-shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <span className="text-[11px] text-zinc-500 font-sans hidden sm:inline">
