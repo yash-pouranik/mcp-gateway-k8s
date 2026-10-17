@@ -930,7 +930,7 @@ export const ChatView: React.FC = () => {
                           {(providers.length > 0 ? providers : [
                             { name: 'openai', displayName: 'OpenAI (GPT-6 Luna)', supportsTools: true, costTier: 'cheap' },
                             { name: 'gemini', displayName: 'Google (Gemini 2.5 Flash-Lite)', supportsTools: true, costTier: 'cheap' },
-                            { name: 'groq', displayName: 'Groq (Llama 3.3 / Free)', supportsTools: false, costTier: 'free' },
+                            { name: 'groq', displayName: 'Groq (Qwen 3.6 27B / Free)', supportsTools: false, costTier: 'free' },
                           ]).map((p) => {
                             const isSelected = selectedProvider === p.name;
                             return (

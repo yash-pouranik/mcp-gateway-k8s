@@ -94,7 +94,7 @@ class AIRouter {
           model: groq.defaultModel,
           supportsTools: false,
           costTier: 'free',
-          routedReason: 'Classified as conversational Q&A — routed to Groq Free Tier (Llama 3.3)',
+          routedReason: 'Classified as conversational Q&A — routed to Groq Free Tier (Qwen 3.6 27B)',
         };
       }
     }

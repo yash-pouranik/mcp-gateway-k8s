@@ -203,26 +203,26 @@ async function main() {
   await prisma.aiProvider.upsert({
     where: { name: 'groq' },
     update: {
-      displayName: 'Groq (Llama 3.3 / Free)',
+      displayName: 'Groq (Qwen 3.6 27B / Free)',
       baseUrl: 'https://api.groq.com/openai/v1',
       apiKeyEnv: 'GROQ_API_KEY',
-      defaultModel: 'llama-3.3-70b-versatile',
+      defaultModel: 'qwen/qwen3.6-27b',
       supportsTools: false,
       costTier: 'free',
       enabled: true,
     },
     create: {
       name: 'groq',
-      displayName: 'Groq (Llama 3.3 / Free)',
+      displayName: 'Groq (Qwen 3.6 27B / Free)',
       baseUrl: 'https://api.groq.com/openai/v1',
       apiKeyEnv: 'GROQ_API_KEY',
-      defaultModel: 'llama-3.3-70b-versatile',
+      defaultModel: 'qwen/qwen3.6-27b',
       supportsTools: false,
       costTier: 'free',
       enabled: true,
     },
   });
-  console.log('Default AI Providers registered (OpenAI GPT-6 Luna, Gemini 2.5 Flash-Lite, Groq Llama 3.3).');
+  console.log('Default AI Providers registered (OpenAI GPT-6 Luna, Gemini 2.5 Flash-Lite, Groq Qwen 3.6 27B).');
 
   console.log('Seeding completed successfully!');
 }
