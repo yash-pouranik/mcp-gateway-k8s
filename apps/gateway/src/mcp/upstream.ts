@@ -69,11 +69,26 @@ class UpstreamManager {
     }
   }
 
+  private cachedTools: { tools: UpstreamTool[]; timestamp: number } | null = null;
+  private readonly CACHE_TTL_MS = 60000; // 60 seconds TTL
+
+  /**
+   * Invalidate tool cache (e.g. when server is updated or toggled)
+   */
+  invalidateCache(): void {
+    this.cachedTools = null;
+  }
+
   /**
    * Aggregate all tools from all enabled upstream servers
    * Namespaces tools as: {serverSlug}__{toolName}
    */
-  async aggregateTools(): Promise<UpstreamTool[]> {
+  async aggregateTools(forceRefresh = false): Promise<UpstreamTool[]> {
+    const now = Date.now();
+    if (!forceRefresh && this.cachedTools && now - this.cachedTools.timestamp < this.CACHE_TTL_MS) {
+      return this.cachedTools.tools;
+    }
+
     const servers = await prisma.mcpServer.findMany({
       where: { enabled: true },
     });
@@ -105,6 +120,7 @@ class UpstreamManager {
       }
     }
 
+    this.cachedTools = { tools: aggregatedTools, timestamp: Date.now() };
     return aggregatedTools;
   }
 

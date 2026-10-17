@@ -153,6 +153,77 @@ async function main() {
   });
   console.log('Notes MCP server registered.');
 
+  // 6. Seed Default AI Providers
+  await prisma.aiProvider.upsert({
+    where: { name: 'openai' },
+    update: {
+      displayName: 'OpenAI (GPT-6 Luna)',
+      baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+      apiKeyEnv: 'OPENAI_API_KEY',
+      defaultModel: process.env.OPENAI_MODEL || 'gpt-6-luna',
+      supportsTools: true,
+      costTier: 'cheap',
+      enabled: true,
+    },
+    create: {
+      name: 'openai',
+      displayName: 'OpenAI (GPT-6 Luna)',
+      baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+      apiKeyEnv: 'OPENAI_API_KEY',
+      defaultModel: process.env.OPENAI_MODEL || 'gpt-6-luna',
+      supportsTools: true,
+      costTier: 'cheap',
+      enabled: true,
+    },
+  });
+
+  await prisma.aiProvider.upsert({
+    where: { name: 'gemini' },
+    update: {
+      displayName: 'Google (Gemini 2.5 Flash-Lite)',
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+      apiKeyEnv: 'GEMINI_API_KEY',
+      defaultModel: 'gemini-2.5-flash-lite',
+      supportsTools: true,
+      costTier: 'cheap',
+      enabled: true,
+    },
+    create: {
+      name: 'gemini',
+      displayName: 'Google (Gemini 2.5 Flash-Lite)',
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+      apiKeyEnv: 'GEMINI_API_KEY',
+      defaultModel: 'gemini-2.5-flash-lite',
+      supportsTools: true,
+      costTier: 'cheap',
+      enabled: true,
+    },
+  });
+
+  await prisma.aiProvider.upsert({
+    where: { name: 'groq' },
+    update: {
+      displayName: 'Groq (Llama 3.3 / Free)',
+      baseUrl: 'https://api.groq.com/openai/v1',
+      apiKeyEnv: 'GROQ_API_KEY',
+      defaultModel: 'llama-3.3-70b-versatile',
+      supportsTools: false,
+      costTier: 'free',
+      enabled: true,
+    },
+    create: {
+      name: 'groq',
+      displayName: 'Groq (Llama 3.3 / Free)',
+      baseUrl: 'https://api.groq.com/openai/v1',
+      apiKeyEnv: 'GROQ_API_KEY',
+      defaultModel: 'llama-3.3-70b-versatile',
+      supportsTools: false,
+      costTier: 'free',
+      enabled: true,
+    },
+  });
+  console.log('Default AI Providers registered (OpenAI GPT-6 Luna, Gemini 2.5 Flash-Lite, Groq Llama 3.3).');
+
   console.log('Seeding completed successfully!');
 }
 

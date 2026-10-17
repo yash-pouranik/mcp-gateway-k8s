@@ -247,6 +247,7 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
                       <span>Inspect</span>
                     </button>
 
+                    {user?.role === 'admin' && (
                     <button
                       onClick={() => openEditModal(server)}
                       className="text-xs font-medium text-zinc-300 hover:text-white flex items-center space-x-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-2.5 py-1.5 rounded-lg transition"
@@ -255,9 +256,11 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
                       <Edit3 className="w-3 h-3 text-zinc-400" />
                       <span>Edit</span>
                     </button>
+                    )}
                   </div>
 
                   {/* Enable / Disable Switch */}
+                  {user?.role === 'admin' ? (
                   <div className="flex items-center space-x-2">
                     <span className="text-[11px] font-mono text-zinc-500">{server.enabled ? 'On' : 'Off'}</span>
                     <button
@@ -274,6 +277,11 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
                       />
                     </button>
                   </div>
+                  ) : (
+                  <span className={`text-[11px] font-mono ${server.enabled ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                    {server.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                  )}
                 </div>
               </div>
             );

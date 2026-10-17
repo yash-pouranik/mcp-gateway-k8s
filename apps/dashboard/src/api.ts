@@ -43,6 +43,49 @@ export interface McpTool {
   inputSchema?: any;
 }
 
+export interface AiProviderInfo {
+  name: string;
+  displayName: string;
+  supportsTools: boolean;
+  costTier: string;
+  defaultModel: string;
+}
+
+export interface ChatSessionSummary {
+  id: string;
+  title: string;
+  provider?: string | null;
+  totalTokens: number;
+  messageCount: number;
+  updatedAt: string;
+  createdAt: string;
+}
+
+export interface ChatMessageRecord {
+  id: string;
+  sessionId: string;
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string;
+  provider?: string | null;
+  model?: string | null;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  totalTokens?: number | null;
+  activities?: any;
+  createdAt: string;
+}
+
+export interface UserUsageSummary {
+  userId: string;
+  name: string;
+  email: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  requestCount: number;
+  providers: Record<string, number>;
+}
+
 export interface AuditLog {
   id: string;
   userId: string | null;
@@ -193,7 +236,17 @@ export const api = {
     return res.json();
   },
 
-  async getAuditLogs(params?: { limit?: number; offset?: number; toolName?: string }): Promise<{
+  async getAuditLogs(params?: {
+    limit?: number;
+    offset?: number;
+    toolName?: string;
+    userId?: string;
+    serverId?: string;
+    success?: boolean;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  }): Promise<{
     logs: AuditLog[];
     total: number;
     limit: number;
@@ -203,6 +256,12 @@ export const api = {
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.offset) query.set('offset', String(params.offset));
     if (params?.toolName) query.set('toolName', params.toolName);
+    if (params?.userId) query.set('userId', params.userId);
+    if (params?.serverId) query.set('serverId', params.serverId);
+    if (params?.success !== undefined) query.set('success', String(params.success));
+    if (params?.startDate) query.set('startDate', params.startDate);
+    if (params?.endDate) query.set('endDate', params.endDate);
+    if (params?.search) query.set('search', params.search);
 
     const res = await fetch(`/api/audit?${query.toString()}`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to load audit logs');
@@ -212,7 +271,8 @@ export const api = {
   async streamChatMessage(
     messages: Array<{ role: string; content: string }>,
     onEvent: (event: string, data: any) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    options?: { sessionId?: string | null; provider?: string }
   ): Promise<{ content: string; totalDurationMs?: number }> {
     const res = await fetch('/api/chat', {
       method: 'POST',
@@ -220,7 +280,12 @@ export const api = {
         ...getAuthHeaders(),
         Accept: 'text/event-stream',
       },
-      body: JSON.stringify({ messages, stream: true }),
+      body: JSON.stringify({
+        messages,
+        stream: true,
+        sessionId: options?.sessionId || undefined,
+        provider: options?.provider || undefined,
+      }),
       signal,
     });
 
@@ -325,6 +390,42 @@ export const api = {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to create member');
     }
+    return res.json();
+  },
+
+  async getAiProviders(): Promise<{ providers: AiProviderInfo[] }> {
+    const res = await fetch('/api/chat/providers', { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Failed to load AI providers');
+    return res.json();
+  },
+
+  async getChatSessions(userId?: string): Promise<{ sessions: ChatSessionSummary[] }> {
+    const query = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+    const res = await fetch(`/api/chat/sessions${query}`, { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Failed to load chat sessions');
+    return res.json();
+  },
+
+  async getChatSession(id: string): Promise<{ session: ChatSessionSummary & { messages: ChatMessageRecord[] } }> {
+    const res = await fetch(`/api/chat/sessions/${id}`, { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Failed to load chat session');
+    return res.json();
+  },
+
+  async deleteChatSession(id: string): Promise<void> {
+    const res = await fetch(`/api/chat/sessions/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to delete chat session');
+  },
+
+  async getChatUsage(): Promise<{
+    summary: UserUsageSummary[];
+    dailyRecords: any[];
+  }> {
+    const res = await fetch('/api/chat/usage', { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Failed to load chat usage analytics');
     return res.json();
   },
 };

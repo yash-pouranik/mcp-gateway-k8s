@@ -15,13 +15,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   onTabChange,
   onLogout,
 }) => {
-  const tabs = [
-    { id: 'servers', label: 'Upstream MCP', icon: Server },
-    { id: 'keys', label: 'API Keys', icon: Key },
-    { id: 'audit', label: 'Audit Trail', icon: Terminal },
-    { id: 'chat', label: 'VYNN Agent', icon: Cpu },
-    { id: 'members', label: 'Team', icon: Users },
+  const allTabs = [
+    { id: 'servers', label: 'Upstream MCP', icon: Server, adminOnly: false },
+    { id: 'keys', label: 'API Keys', icon: Key, adminOnly: false },
+    { id: 'audit', label: 'Audit Trail', icon: Terminal, adminOnly: false },
+    { id: 'chat', label: 'VYNN Agent', icon: Cpu, adminOnly: false },
+    { id: 'members', label: 'Team', icon: Users, adminOnly: true },
   ] as const;
+  const tabs = allTabs.filter(t => !t.adminOnly || user.role === 'admin');
 
   return (
     <header className="bg-black/90 backdrop-blur-md border-b border-zinc-800 sticky top-0 z-40 transition-colors">

@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { api, ActivityItem } from '../api';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { api, ActivityItem, ChatSessionSummary, AiProviderInfo } from '../api';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Send,
   User,
@@ -14,6 +15,10 @@ import {
   Check,
   AlertCircle,
   Square,
+  History,
+  MessageSquare,
+  Plus,
+  Cpu,
 } from 'lucide-react';
 
 interface ChatMessage {
@@ -24,6 +29,8 @@ interface ChatMessage {
   activities?: ActivityItem[];
   isStreaming?: boolean;
   totalDurationMs?: number;
+  provider?: string;
+  model?: string;
 }
 
 function generateActivitySummary(activities: ActivityItem[], totalDurationMs?: number): string {
@@ -88,7 +95,6 @@ const ExecutionTimeline: React.FC<{
 
   return (
     <div className="mb-3 font-sans">
-      {/* Collapsed summary pill (when not streaming) */}
       {!isStreaming && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -107,7 +113,6 @@ const ExecutionTimeline: React.FC<{
         </button>
       )}
 
-      {/* Expanded / Live Activity Timeline */}
       {showFullTimeline && (
         <div className="mt-2 rounded-xl bg-[#222222] border border-[#333333] p-3 text-xs space-y-2.5 transition-all shadow-inner">
           <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 border-b border-[#2e2e2e] pb-1.5 mb-1.5">
@@ -192,18 +197,29 @@ const ExecutionTimeline: React.FC<{
 };
 
 export const ChatView: React.FC = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content:
-        'Welcome! I am **VYNN**, your autonomous AI assistant connected directly to the **MCP Gateway**. I can execute tools across WooCommerce, FakeStore, and Team Notes. What would you like to inspect or manage?',
-      timestamp: new Date(),
-    },
-  ]);
+  const initialWelcome: ChatMessage = {
+    id: 'welcome',
+    role: 'assistant',
+    content:
+      'Welcome! I am **VYNN**, your autonomous AI assistant connected directly to the **MCP Gateway**. I can execute tools across WooCommerce, FakeStore, and Team Notes. What would you like to inspect or manage?',
+    timestamp: new Date(),
+  };
+
+  const [messages, setMessages] = useState<ChatMessage[]>([initialWelcome]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Persistence & Sessions
+  const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+
+  // Multi-Provider AI
+  const [providers, setProviders] = useState<AiProviderInfo[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<string>('auto');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -216,12 +232,92 @@ export const ChatView: React.FC = () => {
     scrollToBottom();
   }, [messages, loading]);
 
+  // Load chat sessions & available providers on mount
+  const loadSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const data = await api.getChatSessions();
+      setSessions(data.sessions || []);
+    } catch (_) {
+      // non-fatal
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSessions();
+    const loadProviders = async () => {
+      try {
+        const data = await api.getAiProviders();
+        setProviders(data.providers || []);
+      } catch (_) {}
+    };
+    loadProviders();
+  }, [loadSessions]);
+
   const handleStop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
     setLoading(false);
+  };
+
+  const handleNewChat = () => {
+    handleStop();
+    setCurrentSessionId(null);
+    setMessages([
+      {
+        id: `welcome-${Date.now()}`,
+        role: 'assistant',
+        content:
+          'New conversation started. Ask me to manage products, check orders, create notes, or answer questions.',
+        timestamp: new Date(),
+      },
+    ]);
+  };
+
+  const handleSelectSession = async (session: ChatSessionSummary) => {
+    if (loading) return;
+    try {
+      setLoading(true);
+      const data = await api.getChatSession(session.id);
+      setCurrentSessionId(session.id);
+
+      if (data.session && data.session.messages.length > 0) {
+        const restored: ChatMessage[] = data.session.messages.map((m) => ({
+          id: m.id,
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+          timestamp: new Date(m.createdAt),
+          activities: Array.isArray(m.activities) ? m.activities : undefined,
+          provider: m.provider || undefined,
+          model: m.model || undefined,
+        }));
+        setMessages(restored);
+      } else {
+        setMessages([initialWelcome]);
+      }
+    } catch (err: any) {
+      alert(`Failed to load chat history: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteSession = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm('Delete this conversation history permanently?')) return;
+    try {
+      await api.deleteChatSession(id);
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+      if (currentSessionId === id) {
+        handleNewChat();
+      }
+    } catch (err: any) {
+      alert(`Failed to delete session: ${err.message}`);
+    }
   };
 
   const handleSend = async (messageText?: string) => {
@@ -243,6 +339,7 @@ export const ChatView: React.FC = () => {
       timestamp: new Date(),
       activities: [],
       isStreaming: true,
+      provider: selectedProvider,
     };
 
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
@@ -261,6 +358,10 @@ export const ChatView: React.FC = () => {
       await api.streamChatMessage(
         payload,
         (event, data) => {
+          if (event === 'session_info' && data.sessionId) {
+            setCurrentSessionId(data.sessionId);
+          }
+
           setMessages((prev) =>
             prev.map((msg) => {
               if (msg.id !== assistantMsgId) return msg;
@@ -324,6 +425,8 @@ export const ChatView: React.FC = () => {
                   content: data.content || msg.content,
                   isStreaming: false,
                   totalDurationMs: data.totalDurationMs,
+                  provider: data.provider || msg.provider,
+                  model: data.model,
                   activities,
                 };
               } else if (event === 'execution_failed') {
@@ -345,8 +448,15 @@ export const ChatView: React.FC = () => {
             })
           );
         },
-        controller.signal
+        controller.signal,
+        {
+          sessionId: currentSessionId,
+          provider: selectedProvider !== 'auto' ? selectedProvider : undefined,
+        }
       );
+
+      // Refresh session sidebar list on completion
+      loadSessions();
     } catch (err: any) {
       if (err.name === 'AbortError') {
         setMessages((prev) =>
@@ -376,19 +486,6 @@ export const ChatView: React.FC = () => {
         )
       );
     }
-  };
-
-  const handleClear = () => {
-    handleStop();
-    setMessages([
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content:
-          'Conversation reset. Ask me to list products, create inventory items, or search notes across connected MCP servers.',
-        timestamp: new Date(),
-      },
-    ]);
   };
 
   const samplePrompts = [
@@ -421,226 +518,404 @@ export const ChatView: React.FC = () => {
   }, [input]);
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#1e1e1e]">
-      {/* Top Studio Bar (Preserved) */}
-      <div className="px-6 py-2.5 bg-[#252525] border-b border-[#333333] flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center space-x-2.5">
-          <div className="w-7 h-7 rounded-lg bg-[#272727] border border-cf-orange/30 flex items-center justify-center p-1 shadow-sm">
-            <img src="/vynn_ai_logo.png" alt="VYNN Logo" className="w-full h-full object-contain drop-shadow" />
-          </div>
-          <div>
+    <div className="flex h-full w-full bg-[#1e1e1e] overflow-hidden">
+      {/* ------------------------------------------------------------- */}
+      {/* 1. Left Chat History Sidebar (Collapsible)                   */}
+      {/* ------------------------------------------------------------- */}
+      {sidebarOpen && (
+        <aside className="w-72 bg-[#171717] border-r border-[#2d2d2d] flex flex-col flex-shrink-0 animate-in slide-in-from-left-4 duration-150 z-20">
+          <div className="p-3.5 border-b border-[#2d2d2d] flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-semibold text-white tracking-tight">VYNN Studio</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              <span className="text-[10px] font-mono text-zinc-400">Autonomous Tool Loop Active</span>
+              <History className="w-4 h-4 text-cf-orange" />
+              <span className="text-xs font-semibold text-white tracking-tight">Chat History</span>
             </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition"
+              title="Close History Sidebar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="p-2.5">
+            <button
+              onClick={handleNewChat}
+              className="w-full flex items-center justify-center space-x-2 py-2 px-3 bg-[#242424] hover:bg-[#2b2b2b] border border-[#353535] hover:border-cf-orange/40 text-white rounded-xl text-xs font-medium transition shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5 text-cf-orange" />
+              <span>New Conversation</span>
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-2 space-y-1 custom-scrollbar">
+            {sessionsLoading ? (
+              <div className="text-center py-8 text-zinc-500 font-mono text-xs">
+                <Loader2 className="w-4 h-4 text-cf-orange animate-spin mx-auto mb-1.5" />
+                <span>Loading sessions...</span>
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="text-center py-8 text-zinc-500 text-xs font-sans px-4">
+                No saved chats yet. Start chatting with VYNN to save session history.
+              </div>
+            ) : (
+              sessions.map((sess) => {
+                const isActive = currentSessionId === sess.id;
+                return (
+                  <div
+                    key={sess.id}
+                    onClick={() => handleSelectSession(sess)}
+                    className={`group relative flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition text-xs ${
+                      isActive
+                        ? 'bg-[#262626] border border-cf-orange/50 text-white shadow-sm'
+                        : 'text-zinc-400 hover:text-white hover:bg-[#202020] border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-start space-x-2 min-w-0 pr-2">
+                      <MessageSquare className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${isActive ? 'text-cf-orange' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
+                      <div className="min-w-0 truncate">
+                        <div className="truncate font-medium">{sess.title}</div>
+                        <div className="text-[10px] text-zinc-500 font-mono flex items-center space-x-1.5 mt-0.5">
+                          <span>{new Date(sess.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                          {sess.totalTokens > 0 && <span>· {sess.totalTokens} tokens</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteSession(e, sess.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                      title="Delete chat"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="p-3 border-t border-[#2d2d2d] bg-[#141414] text-[11px] font-mono text-zinc-500 text-center">
+            {sessions.length} conversation{sessions.length === 1 ? '' : 's'} stored
+          </div>
+        </aside>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 2. Main Conversation Panel                                   */}
+      {/* ------------------------------------------------------------- */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        {/* Top Studio Bar */}
+        <div className="px-5 py-2.5 bg-[#252525] border-b border-[#333333] flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className={`p-1.5 rounded-lg border transition flex items-center space-x-1.5 text-xs font-medium ${
+                sidebarOpen
+                  ? 'bg-cf-orange/15 border-cf-orange/40 text-cf-orange'
+                  : 'bg-[#2c2c2c] hover:bg-[#333333] border-[#3d3d3d] text-zinc-300 hover:text-white'
+              }`}
+              title="Toggle Chat History Sidebar"
+            >
+              <History className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">History</span>
+            </button>
+
+            <div className="w-7 h-7 rounded-lg bg-[#272727] border border-cf-orange/30 flex items-center justify-center p-1 shadow-sm">
+              <img src="/vynn_ai_logo.png" alt="VYNN Logo" className="w-full h-full object-contain drop-shadow" />
+            </div>
+
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-semibold text-white tracking-tight">VYNN Studio</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-[10px] font-mono text-zinc-400">Autonomous Tool Loop Active</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleNewChat}
+              className="px-2.5 py-1 text-zinc-400 hover:text-white hover:bg-[#303030] border border-transparent hover:border-[#404040] rounded-md transition text-xs flex items-center space-x-1.5 font-medium"
+              title="New Chat / Reset Conversation"
+            >
+              <Plus className="w-3.5 h-3.5 text-cf-orange" />
+              <span>New Chat</span>
+            </button>
           </div>
         </div>
 
-        <button
-          onClick={handleClear}
-          className="px-2.5 py-1 text-zinc-400 hover:text-white hover:bg-[#303030] border border-transparent hover:border-[#404040] rounded-md transition text-xs flex items-center space-x-1.5 font-medium"
-          title="New Chat / Reset Conversation"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-          <span>New Chat</span>
-        </button>
-      </div>
-
-      {/* Centered Conversation Area (Claude-style Charcoal Canvas) */}
-      <div className="flex-1 overflow-y-auto px-4 py-8 scroll-smooth">
-        <div className="max-w-[820px] mx-auto space-y-7">
-          {messages.map((m) => {
-            const isUser = m.role === 'user';
-            return (
-              <div key={m.id} className="group relative flex space-x-4">
-                <div
-                  className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium overflow-hidden ${
-                    isUser
-                      ? 'bg-[#333333] text-zinc-200 border border-[#444444]'
-                      : 'bg-[#252525] border border-cf-orange/35 p-1 shadow-sm'
-                  }`}
-                >
-                  {isUser ? <User className="w-4 h-4" /> : <img src="/vynn_ai_logo.png" alt="VYNN" className="w-full h-full object-contain drop-shadow" />}
-                </div>
-
-                <div className="flex-1 space-y-1.5 overflow-hidden pt-0.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs font-medium text-zinc-300">
-                        {isUser ? 'You' : 'VYNN'}
-                      </span>
-                      <span className="text-[11px] font-mono text-zinc-500">
-                        {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-
-                    {!isUser && m.content && (
-                      <button
-                        onClick={() => handleCopy(m.content, m.id)}
-                        className="opacity-0 group-hover:opacity-100 transition p-1 text-zinc-400 hover:text-zinc-200 hover:bg-[#2d2d2d] rounded text-[11px] flex items-center space-x-1"
-                        title="Copy Response"
-                      >
-                        <span>{copiedId === m.id ? 'Copied' : 'Copy'}</span>
-                      </button>
-                    )}
+        {/* Centered Conversation Area (Claude-style Charcoal Canvas) */}
+        <div className="flex-1 overflow-y-auto px-4 py-8 scroll-smooth">
+          <div className="max-w-[820px] mx-auto space-y-7">
+            {messages.map((m) => {
+              const isUser = m.role === 'user';
+              return (
+                <div key={m.id} className="group relative flex space-x-4">
+                  <div
+                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium overflow-hidden ${
+                      isUser
+                        ? 'bg-[#333333] text-zinc-200 border border-[#444444]'
+                        : 'bg-[#252525] border border-cf-orange/35 p-1 shadow-sm'
+                    }`}
+                  >
+                    {isUser ? <User className="w-4 h-4" /> : <img src="/vynn_ai_logo.png" alt="VYNN" className="w-full h-full object-contain drop-shadow" />}
                   </div>
 
-                  {isUser ? (
-                    <div className="text-[15px] text-[#f0f0f0] whitespace-pre-wrap leading-[1.65] font-sans">
-                      {m.content}
-                    </div>
-                  ) : (
-                    <div>
-                      {/* 1. Execution Activity Disclosure (Separate UI Section) */}
-                      {m.activities && m.activities.length > 0 && (
-                        <ExecutionTimeline
-                          activities={m.activities}
-                          isStreaming={!!m.isStreaming}
-                          totalDurationMs={m.totalDurationMs}
-                        />
-                      )}
+                  <div className="flex-1 space-y-1.5 overflow-hidden pt-0.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-medium text-zinc-300">
+                          {isUser ? 'You' : 'VYNN'}
+                        </span>
+                        <span className="text-[11px] font-mono text-zinc-500">
+                          {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {m.provider && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60 uppercase">
+                            {m.provider}
+                          </span>
+                        )}
+                      </div>
 
-                      {/* 2. Normal Assistant Response (Fully Visible) */}
-                      {m.content && (
-                        <div className="prose prose-invert prose-base max-w-none text-[#d4d4d4] leading-[1.7] font-sans">
-                          <ReactMarkdown
-                            components={{
-                              h1: ({ ...props }) => <h1 className="text-lg font-semibold text-[#f5f5f5] mb-2.5 mt-5" {...props} />,
-                              h2: ({ ...props }) => <h2 className="text-base font-semibold text-[#f5f5f5] mb-2 mt-4" {...props} />,
-                              h3: ({ ...props }) => <h3 className="text-sm font-semibold text-cf-orange mb-1.5 mt-3" {...props} />,
-                              p: ({ ...props }) => <p className="mb-3 leading-[1.7] text-[15px] text-[#d6d6d6]" {...props} />,
-                              ul: ({ ...props }) => <ul className="list-disc pl-5 mb-3 space-y-1 text-[15px] text-[#d6d6d6]" {...props} />,
-                              ol: ({ ...props }) => <ol className="list-decimal pl-5 mb-3 space-y-1 text-[15px] text-[#d6d6d6]" {...props} />,
-                              li: ({ ...props }) => <li className="leading-[1.65]" {...props} />,
-                              strong: ({ ...props }) => <strong className="font-semibold text-white" {...props} />,
-                              a: ({ ...props }) => (
-                                <a
-                                  className="text-cf-orange hover:text-amber-400 underline font-medium underline-offset-2"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  {...props}
-                                />
-                              ),
-                              code: ({ ...props }) => (
-                                <code className="px-1.5 py-0.5 rounded bg-[#2b2b2b] border border-[#3a3a3a] text-cf-orange font-mono text-[13px]" {...props} />
-                              ),
-                              pre: ({ ...props }) => (
-                                <pre className="p-3.5 my-3 rounded-xl bg-[#171717] border border-[#2d2d2d] overflow-x-auto text-[13px] font-mono leading-relaxed text-zinc-300" {...props} />
-                              ),
-                              img: ({ src, alt }) => (
-                                <div className="my-3 inline-block group relative cursor-pointer" onClick={() => src && setPreviewImage(src)}>
-                                  <div className="w-52 h-40 rounded-xl overflow-hidden bg-[#262626] border border-[#383838] flex items-center justify-center relative shadow-md group-hover:border-cf-orange/50 transition">
-                                    <img
-                                      src={src}
-                                      alt={alt || 'Embedded image'}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                      loading="lazy"
-                                    />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                                      <div className="p-1.5 rounded-full bg-black/80 text-white flex items-center space-x-1.5 text-xs font-sans px-3">
-                                        <ZoomIn className="w-3.5 h-3.5 text-cf-orange" />
-                                        <span>Preview</span>
+                      {!isUser && m.content && (
+                        <button
+                          onClick={() => handleCopy(m.content, m.id)}
+                          className="opacity-0 group-hover:opacity-100 transition p-1 text-zinc-400 hover:text-zinc-200 hover:bg-[#2d2d2d] rounded text-[11px] flex items-center space-x-1"
+                          title="Copy Response"
+                        >
+                          <span>{copiedId === m.id ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {isUser ? (
+                      <div className="text-[15px] text-[#f0f0f0] whitespace-pre-wrap leading-[1.65] font-sans">
+                        {m.content}
+                      </div>
+                    ) : (
+                      <div>
+                        {m.activities && m.activities.length > 0 && (
+                          <ExecutionTimeline
+                            activities={m.activities}
+                            isStreaming={!!m.isStreaming}
+                            totalDurationMs={m.totalDurationMs}
+                          />
+                        )}
+
+                        {m.content && (
+                          <div className="prose prose-invert prose-base max-w-none text-[#d4d4d4] leading-[1.7] font-sans">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                h1: ({ ...props }) => <h1 className="text-lg font-semibold text-[#f5f5f5] mb-2.5 mt-5" {...props} />,
+                                h2: ({ ...props }) => <h2 className="text-base font-semibold text-[#f5f5f5] mb-2 mt-4" {...props} />,
+                                h3: ({ ...props }) => <h3 className="text-sm font-semibold text-cf-orange mb-1.5 mt-3" {...props} />,
+                                p: ({ ...props }) => <p className="mb-3 leading-[1.7] text-[15px] text-[#d6d6d6]" {...props} />,
+                                ul: ({ ...props }) => <ul className="list-disc pl-5 mb-3 space-y-1 text-[15px] text-[#d6d6d6]" {...props} />,
+                                ol: ({ ...props }) => <ol className="list-decimal pl-5 mb-3 space-y-1 text-[15px] text-[#d6d6d6]" {...props} />,
+                                li: ({ ...props }) => <li className="leading-[1.65]" {...props} />,
+                                strong: ({ ...props }) => <strong className="font-semibold text-white" {...props} />,
+                                a: ({ ...props }) => (
+                                  <a
+                                    className="text-cf-orange hover:text-amber-400 underline font-medium underline-offset-2"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    {...props}
+                                  />
+                                ),
+                                table: ({ ...props }) => (
+                                  <div className="my-4 overflow-x-auto rounded-xl border border-[#333333] bg-[#1a1a1a] shadow-lg">
+                                    <table className="w-full text-left text-sm text-zinc-200 border-collapse" {...props} />
+                                  </div>
+                                ),
+                                thead: ({ ...props }) => (
+                                  <thead className="bg-[#262626] border-b border-[#383838] text-[12px] font-mono uppercase tracking-wider text-zinc-400" {...props} />
+                                ),
+                                tbody: ({ ...props }) => (
+                                  <tbody className="divide-y divide-[#2a2a2a]" {...props} />
+                                ),
+                                tr: ({ ...props }) => (
+                                  <tr className="hover:bg-[#222222] transition-colors" {...props} />
+                                ),
+                                th: ({ ...props }) => (
+                                  <th className="px-4 py-3 font-semibold text-zinc-300" {...props} />
+                                ),
+                                td: ({ children, ...props }) => {
+                                  // Special styling for In Stock / Out of Stock status
+                                  const textVal = String(children || '').trim();
+                                  if (textVal === 'In Stock') {
+                                    return (
+                                      <td className="px-4 py-3 text-zinc-300" {...props}>
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-950/70 border border-emerald-500/30 text-emerald-400">
+                                          ● In Stock
+                                        </span>
+                                      </td>
+                                    );
+                                  }
+                                  if (textVal === 'Out of Stock') {
+                                    return (
+                                      <td className="px-4 py-3 text-zinc-300" {...props}>
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-950/70 border border-rose-500/30 text-rose-400">
+                                          ● Out of Stock
+                                        </span>
+                                      </td>
+                                    );
+                                  }
+                                  return <td className="px-4 py-3 text-zinc-300" {...props}>{children}</td>;
+                                },
+                                code: ({ ...props }) => (
+                                  <code className="px-1.5 py-0.5 rounded bg-[#2b2b2b] border border-[#3a3a3a] text-cf-orange font-mono text-[13px]" {...props} />
+                                ),
+                                pre: ({ ...props }) => (
+                                  <pre className="p-3.5 my-3 rounded-xl bg-[#171717] border border-[#2d2d2d] overflow-x-auto text-[13px] font-mono leading-relaxed text-zinc-300" {...props} />
+                                ),
+                                img: ({ src, alt }) => (
+                                  <div className="my-3 inline-block group relative cursor-pointer" onClick={() => src && setPreviewImage(src)}>
+                                    <div className="w-52 h-40 rounded-xl overflow-hidden bg-[#262626] border border-[#383838] flex items-center justify-center relative shadow-md group-hover:border-cf-orange/50 transition">
+                                      <img
+                                        src={src}
+                                        alt={alt || 'Embedded image'}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                        loading="lazy"
+                                      />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                        <div className="p-1.5 rounded-full bg-black/80 text-white flex items-center space-x-1.5 text-xs font-sans px-3">
+                                          <ZoomIn className="w-3.5 h-3.5 text-cf-orange" />
+                                          <span>Preview</span>
+                                        </div>
                                       </div>
                                     </div>
+                                    {alt && <div className="text-xs text-zinc-400 mt-1.5 truncate max-w-[13rem]">{alt}</div>}
                                   </div>
-                                  {alt && <div className="text-xs text-zinc-400 mt-1.5 truncate max-w-[13rem]">{alt}</div>}
-                                </div>
-                              ),
-                            }}
-                          >
-                            {m.content}
-                          </ReactMarkdown>
-                        </div>
-                      )}
+                                ),
+                              }}
+                            >
+                              {m.content}
+                            </ReactMarkdown>
+                          </div>
+                        )}
 
-                      {/* Fallback spinner while awaiting initial activity */}
-                      {m.isStreaming && !m.content && (!m.activities || m.activities.length === 0) && (
-                        <div className="flex items-center space-x-2 text-xs text-zinc-400 font-mono py-1">
-                          <img src="/vynn_ai_logo.png" alt="VYNN" className="w-4 h-4 object-contain animate-pulse" />
-                          <span>Thinking & resolving tool calls...</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        {m.isStreaming && !m.content && (!m.activities || m.activities.length === 0) && (
+                          <div className="flex items-center space-x-2 text-xs text-zinc-400 font-mono py-1">
+                            <img src="/vynn_ai_logo.png" alt="VYNN" className="w-4 h-4 object-contain animate-pulse" />
+                            <span>Thinking & resolving tool calls...</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {/* Floating Bottom Claude Composer Dock */}
-      <div className="p-4 bg-gradient-to-t from-[#1e1e1e] via-[#1e1e1e]/95 to-transparent flex-shrink-0">
-        <div className="max-w-[820px] mx-auto space-y-3">
-          {/* Quick prompt suggestions when conversation is fresh */}
-          {messages.length <= 2 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-500 flex items-center space-x-1 mr-1">
-                <Sparkles className="w-3 h-3 text-cf-orange" />
-                <span>Suggestions:</span>
-              </div>
-              {samplePrompts.map((p, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleSend(p.prompt)}
-                  className="px-3 py-1 rounded-full bg-[#2b2b2b] hover:bg-[#333333] border border-[#3d3d3d] text-xs text-zinc-300 hover:text-white transition flex items-center space-x-1.5 group"
-                >
-                  <span>{p.title}</span>
-                  <ArrowRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-cf-orange transition" />
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Claude Multiline Rounded Composer */}
-          <div className="relative bg-[#262626] hover:bg-[#282828] border border-[#3a3a3a] focus-within:border-cf-orange/70 rounded-2xl shadow-xl transition-all p-2.5">
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              value={input}
-              disabled={loading}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Reply to VYNN or ask to manage WooCommerce store, products, or notes..."
-              className="w-full px-2.5 py-1.5 pr-12 bg-transparent text-[#f2f2f2] placeholder-zinc-500 text-[15px] leading-relaxed resize-none focus:outline-none disabled:opacity-50 max-h-[200px]"
-            />
-            <div className="flex items-center justify-between pt-1 px-1">
-              <span className="text-[11px] text-zinc-500 font-sans">
-                Use <kbd className="px-1 py-0.5 rounded bg-[#1e1e1e] border border-[#383838] text-[10px] text-zinc-400">Shift + Enter</kbd> for new line
-              </span>
-
-              {loading ? (
-                <button
-                  type="button"
-                  onClick={handleStop}
-                  className="p-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-xl transition shadow-sm flex items-center space-x-1.5 text-xs font-medium"
-                  title="Stop generating"
-                >
-                  <Square className="w-3.5 h-3.5 fill-current text-white" />
-                  <span>Stop</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleSend()}
-                  disabled={!input.trim()}
-                  className="p-2 bg-cf-orange hover:bg-cf-hover active:bg-cf-dark disabled:opacity-30 disabled:hover:bg-cf-orange text-white rounded-xl transition shadow-sm"
-                  title="Send message (Enter)"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+            <div ref={messagesEndRef} />
           </div>
+        </div>
 
-          <div className="text-center">
-            <span className="text-[11px] text-zinc-500">
-              VYNN autonomously executes tools across connected MCP servers with user-attributed audit logging.
-            </span>
+        {/* ------------------------------------------------------------- */}
+        {/* 3. Floating Bottom Claude Composer Dock with Provider Routing */}
+        {/* ------------------------------------------------------------- */}
+        <div className="p-4 bg-gradient-to-t from-[#1e1e1e] via-[#1e1e1e]/95 to-transparent flex-shrink-0">
+          <div className="max-w-[820px] mx-auto space-y-3">
+            {messages.length <= 2 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-500 flex items-center space-x-1 mr-1">
+                  <Sparkles className="w-3 h-3 text-cf-orange" />
+                  <span>Suggestions:</span>
+                </div>
+                {samplePrompts.map((p, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSend(p.prompt)}
+                    className="px-3 py-1 rounded-full bg-[#2b2b2b] hover:bg-[#333333] border border-[#3d3d3d] text-xs text-zinc-300 hover:text-white transition flex items-center space-x-1.5 group"
+                  >
+                    <span>{p.title}</span>
+                    <ArrowRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-cf-orange transition" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Multiline Rounded Composer */}
+            <div className="relative bg-[#262626] hover:bg-[#282828] border border-[#3a3a3a] focus-within:border-cf-orange/70 rounded-2xl shadow-xl transition-all p-2.5">
+              <textarea
+                ref={textareaRef}
+                rows={1}
+                value={input}
+                disabled={loading}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Reply to VYNN or ask to manage WooCommerce store, products, or notes..."
+                className="w-full px-2.5 py-1.5 pr-12 bg-transparent text-[#f2f2f2] placeholder-zinc-500 text-[15px] leading-relaxed resize-none focus:outline-none disabled:opacity-50 max-h-[200px]"
+              />
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 px-1 border-t border-[#313131]">
+                {/* Provider Selector Dock */}
+                <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-[#1e1e1e] border border-[#383838]">
+                    <Cpu className="w-3 h-3 text-cf-orange" />
+                    <select
+                      value={selectedProvider}
+                      onChange={(e) => setSelectedProvider(e.target.value)}
+                      className="bg-transparent text-[11px] font-mono text-zinc-300 focus:outline-none cursor-pointer pr-1"
+                    >
+                      <option value="auto" className="bg-[#1e1e1e] text-zinc-100">
+                        ⚡ Auto Router (Smart Model Selection)
+                      </option>
+                      {providers.length > 0 ? (
+                        providers.map((p) => (
+                          <option key={p.name} value={p.name} className="bg-[#1e1e1e] text-zinc-100">
+                            {p.displayName} {p.supportsTools ? '(Actions/Tools)' : '(Free Chat)'}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="openai" className="bg-[#1e1e1e] text-zinc-100">OpenAI (GPT-6 Luna)</option>
+                          <option value="gemini" className="bg-[#1e1e1e] text-zinc-100">Google (Gemini 2.5 Flash-Lite)</option>
+                          <option value="groq" className="bg-[#1e1e1e] text-zinc-100">Groq (Llama 3.3 / Free)</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  <span className="text-[11px] text-zinc-500 font-sans hidden sm:inline">
+                    Use <kbd className="px-1 py-0.5 rounded bg-[#1e1e1e] border border-[#383838] text-[10px] text-zinc-400">Shift + Enter</kbd> for newline
+                  </span>
+                </div>
+
+                {loading ? (
+                  <button
+                    type="button"
+                    onClick={handleStop}
+                    className="p-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-xl transition shadow-sm flex items-center space-x-1.5 text-xs font-medium"
+                    title="Stop generating"
+                  >
+                    <Square className="w-3.5 h-3.5 fill-current text-white" />
+                    <span>Stop</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSend()}
+                    disabled={!input.trim()}
+                    className="p-2 bg-cf-orange hover:bg-cf-hover active:bg-cf-dark disabled:opacity-30 disabled:hover:bg-cf-orange text-white rounded-xl transition shadow-sm"
+                    title="Send message (Enter)"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="text-center">
+              <span className="text-[11px] text-zinc-500">
+                VYNN autonomously executes tools across connected MCP servers with user-attributed audit logging.
+              </span>
+            </div>
           </div>
         </div>
       </div>

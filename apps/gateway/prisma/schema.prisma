@@ -18,6 +18,13 @@ enum ServerStatus {
   disabled
 }
 
+enum MessageRole {
+  user
+  assistant
+  system
+  tool
+}
+
 model User {
   id            String    @id @default(uuid())
   email         String    @unique
@@ -28,6 +35,8 @@ model User {
 
   apiKeys       ApiKey[]
   auditLogs     AuditLog[]
+  chatSessions  ChatSession[]
+  dailyUsage    DailyTokenUsage[]
 
   @@map("users")
 }
@@ -77,8 +86,105 @@ model AuditLog {
   user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   server       McpServer? @relation(fields: [serverId], references: [id], onDelete: SetNull)
 
-  @@index([calledAt])
-  @@index([userId])
-  @@index([serverId])
+  @@index([calledAt(sort: Desc)])
+  @@index([userId, calledAt(sort: Desc)])
+  @@index([serverId, calledAt(sort: Desc)])
+  @@index([success, calledAt(sort: Desc)])
   @@map("audit_log")
+}
+
+// ==========================================
+// OPTIMIZED CHAT PERSISTENCE & ANALYTICS
+// ==========================================
+
+model ChatSession {
+  id           String        @id @default(uuid())
+  userId       String        @map("user_id")
+  title        String        @default("New Conversation")
+  provider     String?       // "openai", "gemini", "grok"
+  totalTokens  Int           @default(0) @map("total_tokens")
+  messageCount Int           @default(0) @map("message_count")
+  pinned       Boolean       @default(false)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages     ChatMessage[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id               String              @id @default(uuid())
+  sessionId        String              @map("session_id")
+  sequenceNumber   Int                 @default(0) @map("sequence_number")
+  role             MessageRole
+  content          String              @db.Text
+  provider         String?
+  model            String?
+  promptTokens     Int?                @map("prompt_tokens")
+  completionTokens Int?                @map("completion_tokens")
+  totalTokens      Int?                @map("total_tokens")
+  createdAt        DateTime            @default(now()) @map("created_at")
+
+  session          ChatSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  toolExecutions   ChatToolExecution[]
+
+  @@index([sessionId, sequenceNumber(sort: Asc)])
+  @@index([sessionId, createdAt(sort: Asc)])
+  @@map("chat_messages")
+}
+
+// Separated tool execution payload (Heavy inputs/outputs isolated from main text flow)
+model ChatToolExecution {
+  id             String       @id @default(uuid())
+  messageId      String       @map("message_id")
+  toolName       String       @map("tool_name")
+  input          Json?
+  output         Json?
+  isError        Boolean      @default(false) @map("is_error")
+  durationMs     Int          @default(0) @map("duration_ms")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  message        ChatMessage  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("chat_tool_executions")
+}
+
+// High-speed O(1) analytics rollup
+model DailyTokenUsage {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  provider         String   // "openai", "gemini", "grok"
+  model            String
+  date             DateTime @db.Date // YYYY-MM-DD bucket
+  promptTokens     Int      @default(0) @map("prompt_tokens")
+  completionTokens Int      @default(0) @map("completion_tokens")
+  totalTokens      Int      @default(0) @map("total_tokens")
+  requestCount     Int      @default(0) @map("request_count")
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider, model, date])
+  @@index([date])
+  @@index([userId, date])
+  @@map("daily_token_usage")
+}
+
+// Runtime AI provider configuration
+model AiProvider {
+  id            String   @id @default(uuid())
+  name          String   @unique          // "openai", "gemini", "grok"
+  displayName   String   @map("display_name")
+  baseUrl       String   @map("base_url")
+  apiKeyEnv     String   @map("api_key_env")
+  defaultModel  String   @map("default_model")
+  supportsTools Boolean  @default(true) @map("supports_tools")
+  costTier      String   @default("paid") @map("cost_tier") // "free", "cheap", "standard"
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("ai_providers")
 }

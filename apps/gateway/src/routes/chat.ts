@@ -1,11 +1,13 @@
 import { Router, Request, Response } from 'express';
-import { requireUserAuth } from '../middleware/auth.js';
+import { prisma } from '../db.js';
+import { requireUserAuth, requireAdmin } from '../middleware/auth.js';
 import { upstreamManager } from '../mcp/upstream.js';
 import { recordAuditLog } from '../services/audit.js';
+import { aiRouter } from '../services/aiRouter.js';
 
 const router = Router();
 
-interface ChatMessage {
+interface ChatMessageInput {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
   tool_call_id?: string;
@@ -68,9 +70,179 @@ function generateToolOutputSummary(cleanTool: string, result: any): string {
   return 'Completed successfully';
 }
 
-// POST /api/chat
+// ==========================================
+// 1. GET /api/chat/providers — List AI Providers
+// ==========================================
+router.get('/providers', requireUserAuth, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const providers = await aiRouter.getProviders();
+    res.json({
+      providers: providers.map((p) => ({
+        name: p.name,
+        displayName: p.displayName,
+        supportsTools: p.supportsTools,
+        costTier: p.costTier,
+        defaultModel: p.defaultModel,
+      })),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: `Failed to load providers: ${err.message}` });
+  }
+});
+
+// ==========================================
+// 2. GET /api/chat/sessions — List Chat Sessions
+// ==========================================
+router.get('/sessions', requireUserAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const targetUserId = (req.user!.role === 'admin' && typeof req.query.userId === 'string')
+      ? req.query.userId
+      : req.user!.id;
+
+    const sessions = await prisma.chatSession.findMany({
+      where: { userId: targetUserId },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        title: true,
+        provider: true,
+        totalTokens: true,
+        messageCount: true,
+        updatedAt: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({ sessions });
+  } catch (err: any) {
+    res.status(500).json({ error: `Failed to load sessions: ${err.message}` });
+  }
+});
+
+// ==========================================
+// 3. GET /api/chat/sessions/:id — Load Session History
+// ==========================================
+router.get('/sessions/:id', requireUserAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const session = await prisma.chatSession.findUnique({
+      where: { id },
+      include: {
+        messages: {
+          orderBy: { sequenceNumber: 'asc' },
+          include: {
+            toolExecutions: true,
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+
+    if (session.userId !== req.user!.id && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'Forbidden: You do not own this chat session' });
+      return;
+    }
+
+    res.json({ session });
+  } catch (err: any) {
+    res.status(500).json({ error: `Failed to load session messages: ${err.message}` });
+  }
+});
+
+// ==========================================
+// 4. DELETE /api/chat/sessions/:id — Delete Session
+// ==========================================
+router.delete('/sessions/:id', requireUserAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const session = await prisma.chatSession.findUnique({ where: { id } });
+
+    if (!session) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+
+    if (session.userId !== req.user!.id && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
+
+    await prisma.chatSession.delete({ where: { id } });
+    res.json({ message: 'Session deleted successfully' });
+  } catch (err: any) {
+    res.status(500).json({ error: `Failed to delete session: ${err.message}` });
+  }
+});
+
+// ==========================================
+// 5. GET /api/chat/usage — Admin Token Analytics
+// ==========================================
+router.get('/usage', requireUserAuth, requireAdmin, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const usage = await prisma.dailyTokenUsage.findMany({
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+      orderBy: { date: 'desc' },
+      take: 200,
+    });
+
+    // Aggregate by user
+    const userSummaryMap: Record<string, {
+      userId: string;
+      name: string;
+      email: string;
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      requestCount: number;
+      providers: Record<string, number>;
+    }> = {};
+
+    for (const record of usage) {
+      const uId = record.userId;
+      if (!userSummaryMap[uId]) {
+        userSummaryMap[uId] = {
+          userId: uId,
+          name: record.user.name,
+          email: record.user.email,
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          requestCount: 0,
+          providers: {},
+        };
+      }
+
+      userSummaryMap[uId].promptTokens += record.promptTokens;
+      userSummaryMap[uId].completionTokens += record.completionTokens;
+      userSummaryMap[uId].totalTokens += record.totalTokens;
+      userSummaryMap[uId].requestCount += record.requestCount;
+      userSummaryMap[uId].providers[record.provider] =
+        (userSummaryMap[uId].providers[record.provider] || 0) + record.totalTokens;
+    }
+
+    res.json({
+      summary: Object.values(userSummaryMap),
+      dailyRecords: usage,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: `Failed to load usage statistics: ${err.message}` });
+  }
+});
+
+// ==========================================
+// 6. POST /api/chat — Multi-Turn Agent Loop with Persistence & Multi-Provider
+// ==========================================
 router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<void> => {
-  const { messages, stream } = req.body;
+  const { messages, stream, sessionId, provider: requestedProvider } = req.body;
   if (!Array.isArray(messages)) {
     res.status(400).json({ error: 'Messages array is required' });
     return;
@@ -97,49 +269,130 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
   };
 
   const overallStartTime = Date.now();
-  const apiKey = process.env.OPENAI_API_KEY;
-  const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+  const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
 
-  // 1. Fetch available aggregated tools from enabled MCP servers
-  sendEvent('activity_started', {
-    id: 'act-explore',
-    type: 'explore_tools',
-    label: 'Exploring available tools across connected MCP servers',
-    timestamp: Date.now(),
-  });
-
-  const exploreStart = Date.now();
-  let upstreamTools: any[] = [];
+  // 1. Session Persistence: Ensure ChatSession exists
+  let currentSessionId = sessionId;
   try {
-    upstreamTools = await upstreamManager.aggregateTools();
-    sendEvent('activity_updated', {
-      id: 'act-explore',
-      status: 'completed',
-      label: `Discovered ${upstreamTools.length} tools across upstream servers`,
-      durationMs: Date.now() - exploreStart,
-    });
-  } catch (err: any) {
-    sendEvent('activity_updated', {
-      id: 'act-explore',
-      status: 'failed',
-      label: 'Failed to aggregate upstream tools',
-      error: err.message,
-      durationMs: Date.now() - exploreStart,
-    });
+    if (currentSessionId) {
+      const existing = await prisma.chatSession.findUnique({ where: { id: currentSessionId } });
+      if (!existing || (existing.userId !== req.user!.id && req.user!.role !== 'admin')) {
+        currentSessionId = null;
+      }
+    }
+
+    if (!currentSessionId) {
+      const title = lastUserMsg.length > 80
+        ? lastUserMsg.substring(0, 80).replace(/\s+\S*$/, '...')
+        : lastUserMsg || 'New Conversation';
+
+      const newSession = await prisma.chatSession.create({
+        data: {
+          userId: req.user!.id,
+          title,
+          provider: requestedProvider || 'auto',
+        },
+      });
+      currentSessionId = newSession.id;
+    }
+
+    // Persist incoming user message
+    if (lastUserMsg) {
+      const msgCount = await prisma.chatMessage.count({ where: { sessionId: currentSessionId } });
+      await prisma.chatMessage.create({
+        data: {
+          sessionId: currentSessionId,
+          sequenceNumber: msgCount + 1,
+          role: 'user',
+          content: lastUserMsg,
+        },
+      });
+    }
+
+    sendEvent('session_info', { sessionId: currentSessionId });
+  } catch (err) {
+    console.warn('Session persistence notice:', err);
   }
 
-  const openAiTools = upstreamTools.map((t) => ({
-    type: 'function' as const,
-    function: {
-      name: t.gatewayName,
-      description: t.description || '',
-      parameters: t.inputSchema || { type: 'object', properties: {} },
-    },
-  }));
+  // 2. Intent Classification: Detect Greetings & Pure Conversational Chit-Chat
+  const cleanMsg = lastUserMsg.trim().toLowerCase();
+  const greetingPatterns = [
+    /^(hi|hello|hlo|hey|heyy|namaste|greetings|good\s*(morning|afternoon|evening)|howdy)\b/i,
+    /^(who\s+are\s+you|what\s+can\s+you\s+do|help|what\s+are\s+your\s+capabilities)\b/i,
+    /^(thanks|thank\s+you|bye|goodbye|ok|okay|cool|nice)\b/i,
+  ];
+  const isPureGreeting = cleanMsg.length <= 40 && greetingPatterns.some((pattern) => pattern.test(cleanMsg));
 
-  // If no OpenAI key is set, fallback to clear notification
-  if (!apiKey) {
-    const fallbackText = 'Note: OPENAI_API_KEY is not configured in the gateway environment. You can manage servers, API keys, and test MCP tools directly via the MCP endpoint /mcp or supply an API key in the Gateway deployment.';
+  // 3. Discover MCP tools (Skip activity noise for pure greetings)
+  let upstreamTools: any[] = [];
+  if (!isPureGreeting) {
+    sendEvent('activity_started', {
+      id: 'act-explore',
+      type: 'explore_tools',
+      label: 'Exploring available tools across connected MCP servers',
+      timestamp: Date.now(),
+    });
+
+    const exploreStart = Date.now();
+    try {
+      upstreamTools = await upstreamManager.aggregateTools();
+      sendEvent('activity_updated', {
+        id: 'act-explore',
+        status: 'completed',
+        label: `Discovered ${upstreamTools.length} tools across upstream servers`,
+        durationMs: Date.now() - exploreStart,
+      });
+    } catch (err: any) {
+      sendEvent('activity_updated', {
+        id: 'act-explore',
+        status: 'failed',
+        label: 'Failed to aggregate upstream tools',
+        error: err.message,
+        durationMs: Date.now() - exploreStart,
+      });
+    }
+  }
+
+  // 4. Resolve AI Provider via Multi-Provider Router
+  const executionConfig = await aiRouter.resolveProvider(
+    requestedProvider,
+    lastUserMsg,
+    upstreamTools
+  );
+
+  // Clean activity label without duplicate model mention
+  const modelLabel = executionConfig.displayName.includes(executionConfig.model)
+    ? executionConfig.displayName
+    : `${executionConfig.displayName} (${executionConfig.model})`;
+
+  sendEvent('activity_started', {
+    id: 'act-router',
+    type: 'reasoning',
+    label: `Model Router: ${executionConfig.displayName}`,
+    timestamp: Date.now(),
+  });
+  sendEvent('activity_updated', {
+    id: 'act-router',
+    status: 'completed',
+    label: isPureGreeting ? `Fast-Path Active · ${modelLabel}` : `Selected ${modelLabel}`,
+    durationMs: 15,
+  });
+
+  // Only attach tools if not a pure greeting and provider supports tools
+  const openAiTools = (!isPureGreeting && executionConfig.supportsTools)
+    ? upstreamTools.map((t) => ({
+        type: 'function' as const,
+        function: {
+          name: t.gatewayName,
+          description: t.description || '',
+          parameters: t.inputSchema || { type: 'object', properties: {} },
+        },
+      }))
+    : [];
+
+  // Fallback if no API key is available
+  if (!executionConfig.apiKey) {
+    const fallbackText = `Note: API key for ${executionConfig.displayName} is not configured in the gateway environment. You can manage upstream servers, API keys, or configure ${executionConfig.providerName.toUpperCase()}_API_KEY in the Gateway deployment.`;
     if (isStream) {
       sendEvent('assistant_response_started', { timestamp: Date.now() });
       sendEvent('assistant_response_chunk', { delta: fallbackText });
@@ -158,8 +411,8 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
     return;
   }
 
-  // 2. Autonomous Multi-turn Agent Tool Calling Loop (max 5 rounds)
-  const conversation: ChatMessage[] = [
+  // 4. Autonomous Agent Loop
+  const conversation: ChatMessageInput[] = [
     {
       role: 'system',
       content: `You are VYNN, an autonomous AI assistant for the WooCommerce & MCP Gateway platform. You have access to tools across connected systems (e.g. WooCommerce store, Notes, FakeStore). When users ask to view or modify store products, orders, notes, etc., call the respective tools. Always provide clear, helpful markdown summaries of tool results.`,
@@ -168,7 +421,10 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
   ];
 
   let rounds = 0;
-  const maxRounds = 5;
+  const maxRounds = executionConfig.supportsTools ? 5 : 1;
+  const recordedActivities: any[] = [];
+  let promptTokensTotal = 0;
+  let completionTokensTotal = 0;
 
   try {
     while (rounds < maxRounds) {
@@ -188,14 +444,14 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
       });
       const roundStart = Date.now();
 
-      const response = await fetch(`${baseUrl}/chat/completions`, {
+      const response = await fetch(`${executionConfig.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${executionConfig.apiKey}`,
         },
         body: JSON.stringify({
-          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          model: executionConfig.model,
           messages: conversation,
           tools: openAiTools.length > 0 ? openAiTools : undefined,
           tool_choice: openAiTools.length > 0 ? 'auto' : undefined,
@@ -222,6 +478,11 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
       }
 
       const data = (await response.json()) as any;
+      if (data.usage) {
+        promptTokensTotal += data.usage.prompt_tokens || 0;
+        completionTokensTotal += data.usage.completion_tokens || 0;
+      }
+
       const choice = data.choices?.[0];
       if (!choice) {
         if (isStream) {
@@ -244,9 +505,8 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
         durationMs: Date.now() - roundStart,
       });
 
-      // Check if the assistant called tools
+      // Final answer reached
       if (!hasTools) {
-        // Final text answer ready
         const finalContent = assistantMessage.content || '';
         sendEvent('activity_started', {
           id: 'act-final',
@@ -258,8 +518,87 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
           id: 'act-final',
           status: 'completed',
           label: 'Response generated',
-          durationMs: 40,
+          durationMs: 35,
         });
+
+        // 5. Persist Assistant Response & Rollup Token Usage
+        const totalTokens = promptTokensTotal + completionTokensTotal;
+        if (currentSessionId) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          try {
+            const currentCount = await prisma.chatMessage.count({ where: { sessionId: currentSessionId } });
+            const assistantMsg = await prisma.chatMessage.create({
+              data: {
+                sessionId: currentSessionId,
+                sequenceNumber: currentCount + 1,
+                role: 'assistant',
+                content: finalContent,
+                provider: executionConfig.providerName,
+                model: executionConfig.model,
+                promptTokens: promptTokensTotal || null,
+                completionTokens: completionTokensTotal || null,
+                totalTokens: totalTokens || null,
+              },
+            });
+
+            // Persist separated tool executions (isolated payload)
+            if (recordedActivities.length > 0) {
+              await prisma.chatToolExecution.createMany({
+                data: recordedActivities.map((act) => ({
+                  messageId: assistantMsg.id,
+                  toolName: act.tool,
+                  input: act.inputSummary ?? undefined,
+                  output: act.summary ? { summary: act.summary } : undefined,
+                  isError: act.status === 'failed',
+                  durationMs: act.durationMs || 0,
+                })),
+              });
+            }
+
+            // Rollup token analytics & session counters
+            await Promise.all([
+              prisma.dailyTokenUsage.upsert({
+                where: {
+                  userId_provider_model_date: {
+                    userId: req.user!.id,
+                    provider: executionConfig.providerName,
+                    model: executionConfig.model,
+                    date: today,
+                  },
+                },
+                update: {
+                  promptTokens: { increment: promptTokensTotal },
+                  completionTokens: { increment: completionTokensTotal },
+                  totalTokens: { increment: totalTokens },
+                  requestCount: { increment: 1 },
+                },
+                create: {
+                  userId: req.user!.id,
+                  provider: executionConfig.providerName,
+                  model: executionConfig.model,
+                  date: today,
+                  promptTokens: promptTokensTotal,
+                  completionTokens: completionTokensTotal,
+                  totalTokens,
+                  requestCount: 1,
+                },
+              }),
+              prisma.chatSession.update({
+                where: { id: currentSessionId },
+                data: {
+                  provider: executionConfig.providerName,
+                  messageCount: { increment: 2 },
+                  totalTokens: { increment: totalTokens },
+                  updatedAt: new Date(),
+                },
+              }),
+            ]);
+          } catch (err) {
+            console.error('Persistence error:', err);
+          }
+        }
 
         if (isStream) {
           sendEvent('assistant_response_started', { timestamp: Date.now() });
@@ -267,18 +606,24 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
           sendEvent('assistant_response_completed', {
             content: finalContent,
             totalDurationMs: Date.now() - overallStartTime,
+            provider: executionConfig.providerName,
+            model: executionConfig.model,
+            tokens: { prompt: promptTokensTotal, completion: completionTokensTotal, total: totalTokens },
           });
           res.end();
         } else {
           res.json({
             role: 'assistant',
             content: finalContent,
+            provider: executionConfig.providerName,
+            model: executionConfig.model,
+            tokens: { prompt: promptTokensTotal, completion: completionTokensTotal, total: totalTokens },
           });
         }
         return;
       }
 
-      // Execute each tool call requested by LLM
+      // Execute tools requested by LLM
       for (const toolCall of assistantMessage.tool_calls) {
         if (isAborted) {
           sendEvent('execution_cancelled', { timestamp: Date.now() });
@@ -318,14 +663,18 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
           const duration = Date.now() - startTime;
           const summary = generateToolOutputSummary(cleanTool, result);
 
-          sendEvent('tool_call_completed', {
+          const toolActivity = {
             id: callId,
             tool: toolName,
             cleanTool,
             server: serverSlug,
             durationMs: duration,
             summary,
-          });
+            status: 'completed',
+          };
+          recordedActivities.push(toolActivity);
+
+          sendEvent('tool_call_completed', toolActivity);
 
           await recordAuditLog({
             userId: req.user!.id,
@@ -339,14 +688,18 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
           const duration = Date.now() - startTime;
           toolOutputString = JSON.stringify({ error: err.message || 'Execution failed' });
 
-          sendEvent('tool_call_failed', {
+          const failedActivity = {
             id: callId,
             tool: toolName,
             cleanTool,
             server: serverSlug,
             durationMs: duration,
             error: err.message || 'Execution failed',
-          });
+            status: 'failed',
+          };
+          recordedActivities.push(failedActivity);
+
+          sendEvent('tool_call_failed', failedActivity);
 
           await recordAuditLog({
             userId: req.user!.id,

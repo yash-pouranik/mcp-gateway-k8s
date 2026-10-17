@@ -75,7 +75,7 @@ export const ApiKeysView: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            Secure client keys using SHA-256 indexed lookups. Personalized prefix: <code className="text-cf-orange font-mono">urumi_live_</code>
+            Secure client keys using SHA-256 indexed lookups. Personalized prefix: <code className="text-cf-orange font-mono">mcp_live_</code>
           </p>
         </div>
 
@@ -252,7 +252,7 @@ export const ApiKeysView: React.FC = () => {
                 </div>
 
                 <div className="text-[11px] text-zinc-500 font-mono">
-                  Prefix: <span className="text-zinc-300">urumi_live_</span> + 32-character secure random hex
+                  Prefix: <span className="text-zinc-300">mcp_live_</span> + 32-character secure random hex
                 </div>
 
                 <div className="pt-2 flex justify-end space-x-2.5">
