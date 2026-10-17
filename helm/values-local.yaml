@@ -25,6 +25,8 @@ gateway:
     adminPassword: "AdminPass123!"
     openaiModel: "gpt-6-luna"
     openaiApiKey: "" # Injected securely via secret or CLI
+    geminiApiKey: "" # Google Gemini API Key
+    groqApiKey: ""   # Groq API Key (Free conversational tier)
 
 dashboard:
   image:

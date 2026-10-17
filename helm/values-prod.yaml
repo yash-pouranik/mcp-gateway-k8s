@@ -25,6 +25,8 @@ gateway:
     adminPassword: "" # Injected from production Secret
     openaiModel: "gpt-6-luna"
     openaiApiKey: "" # Injected from production Secret
+    geminiApiKey: "" # Injected from production Secret
+    groqApiKey: ""   # Injected from production Secret
   resources:
     requests:
       cpu: 100m
