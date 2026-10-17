@@ -94,7 +94,7 @@ class AIRouter {
           model: groq.defaultModel,
           supportsTools: false,
           costTier: 'free',
-          routedReason: 'Classified as conversational Q&A — routed to Groq Free Tier (Qwen 3.6 27B)',
+          routedReason: 'Classified as conversational Q&A — routed to Groq Free Tier (GPT-OSS 120B)',
         };
       }
     }
@@ -125,7 +125,7 @@ class AIRouter {
         model: gemini.defaultModel,
         supportsTools: true,
         costTier: gemini.costTier,
-        routedReason: 'Tool execution required — routed to Google Gemini (2.5 Flash-Lite)',
+        routedReason: 'Tool execution required — routed to Google Gemini (3.1 Flash-Lite)',
       };
     }
 

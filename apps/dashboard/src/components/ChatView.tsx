@@ -221,6 +221,8 @@ export const ChatView: React.FC = () => {
   const [providers, setProviders] = useState<AiProviderInfo[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string>('auto');
   const [providerDropdownOpen, setProviderDropdownOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const providerDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -319,17 +321,25 @@ export const ChatView: React.FC = () => {
     }
   };
 
-  const handleDeleteSession = async (e: React.MouseEvent, id: string) => {
+  const handleDeleteClick = (e: React.MouseEvent, session: ChatSessionSummary) => {
     e.stopPropagation();
-    if (!confirm('Delete this conversation history permanently?')) return;
+    setSessionToDelete({ id: session.id, title: session.title });
+  };
+
+  const confirmDeleteSession = async () => {
+    if (!sessionToDelete || isDeleting) return;
     try {
-      await api.deleteChatSession(id);
-      setSessions((prev) => prev.filter((s) => s.id !== id));
-      if (currentSessionId === id) {
+      setIsDeleting(true);
+      await api.deleteChatSession(sessionToDelete.id);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionToDelete.id));
+      if (currentSessionId === sessionToDelete.id) {
         handleNewChat();
       }
+      setSessionToDelete(null);
     } catch (err: any) {
-      alert(`Failed to delete session: ${err.message}`);
+      console.error('Delete session error:', err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -597,7 +607,7 @@ export const ChatView: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={(e) => handleDeleteSession(e, sess.id)}
+                      onClick={(e) => handleDeleteClick(e, sess)}
                       className="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
                       title="Delete chat"
                     >
@@ -929,8 +939,8 @@ export const ChatView: React.FC = () => {
                           {/* Dynamic / Fallback Providers */}
                           {(providers.length > 0 ? providers : [
                             { name: 'openai', displayName: 'OpenAI (GPT-6 Luna)', supportsTools: true, costTier: 'cheap' },
-                            { name: 'gemini', displayName: 'Google (Gemini 2.5 Flash-Lite)', supportsTools: true, costTier: 'cheap' },
-                            { name: 'groq', displayName: 'Groq (Qwen 3.6 27B / Free)', supportsTools: false, costTier: 'free' },
+                            { name: 'gemini', displayName: 'Google (Gemini 3.1 Flash-Lite)', supportsTools: true, costTier: 'cheap' },
+                            { name: 'groq', displayName: 'Groq (GPT-OSS 120B / Free)', supportsTools: false, costTier: 'free' },
                           ]).map((p) => {
                             const isSelected = selectedProvider === p.name;
                             return (
@@ -1033,6 +1043,64 @@ export const ChatView: React.FC = () => {
               className="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl border border-zinc-800"
               onClick={(e) => e.stopPropagation()}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Kumo Custom Delete Confirmation Modal */}
+      {sessionToDelete && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => !isDeleting && setSessionToDelete(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-[#1e1e1e] border border-zinc-700/80 shadow-2xl p-5 text-left animate-in zoom-in-95 duration-150 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center flex-shrink-0 text-rose-400">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-white">Delete Conversation?</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Are you sure you want to permanently delete this chat history?
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#171717] border border-zinc-800 text-xs text-zinc-300 font-mono truncate">
+              "{sessionToDelete.title}"
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-1">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setSessionToDelete(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#282828] hover:bg-[#303030] text-zinc-300 hover:text-white border border-zinc-700 text-xs font-medium transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDeleteSession}
+                className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white text-xs font-medium transition flex items-center space-x-1.5 disabled:opacity-50 shadow-md"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Permanently</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
