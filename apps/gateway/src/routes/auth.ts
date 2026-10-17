@@ -52,19 +52,38 @@ router.get('/me', requireUserAuth, async (req: Request, res: Response): Promise<
 
 // GET /api/auth/api-keys
 router.get('/api-keys', requireUserAuth, async (req: Request, res: Response): Promise<void> => {
+  const showAll = req.user!.role === 'admin' && req.query.all === 'true';
+  const where: any = {};
+
+  if (!showAll) {
+    where.userId = req.user!.id;
+  } else if (req.query.userId && typeof req.query.userId === 'string') {
+    where.userId = req.query.userId;
+  }
+
   const keys = await prisma.apiKey.findMany({
-    where: { userId: req.user!.id },
+    where,
     select: {
       id: true,
       name: true,
       keyPrefix: true,
       revokedAt: true,
       createdAt: true,
+      userId: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
   res.json({ keys });
 });
+
 
 // POST /api/auth/api-keys
 router.post('/api-keys', requireUserAuth, async (req: Request, res: Response): Promise<void> => {

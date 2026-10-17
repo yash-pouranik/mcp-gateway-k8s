@@ -180,20 +180,20 @@ async function main() {
   await prisma.aiProvider.upsert({
     where: { name: 'gemini' },
     update: {
-      displayName: 'Google (Gemini 2.5 Flash-Lite)',
+      displayName: 'Google (Gemini 3.1 Flash-Lite)',
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
       apiKeyEnv: 'GEMINI_API_KEY',
-      defaultModel: 'gemini-2.5-flash-lite',
+      defaultModel: 'gemini-3.1-flash-lite',
       supportsTools: true,
       costTier: 'cheap',
       enabled: true,
     },
     create: {
       name: 'gemini',
-      displayName: 'Google (Gemini 2.5 Flash-Lite)',
+      displayName: 'Google (Gemini 3.1 Flash-Lite)',
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
       apiKeyEnv: 'GEMINI_API_KEY',
-      defaultModel: 'gemini-2.5-flash-lite',
+      defaultModel: 'gemini-3.1-flash-lite',
       supportsTools: true,
       costTier: 'cheap',
       enabled: true,
@@ -203,26 +203,26 @@ async function main() {
   await prisma.aiProvider.upsert({
     where: { name: 'groq' },
     update: {
-      displayName: 'Groq (Qwen 3.6 27B / Free)',
+      displayName: 'Groq (GPT-OSS 120B / Free)',
       baseUrl: 'https://api.groq.com/openai/v1',
       apiKeyEnv: 'GROQ_API_KEY',
-      defaultModel: 'qwen/qwen3.6-27b',
+      defaultModel: 'openai/gpt-oss-120b',
       supportsTools: false,
       costTier: 'free',
       enabled: true,
     },
     create: {
       name: 'groq',
-      displayName: 'Groq (Qwen 3.6 27B / Free)',
+      displayName: 'Groq (GPT-OSS 120B / Free)',
       baseUrl: 'https://api.groq.com/openai/v1',
       apiKeyEnv: 'GROQ_API_KEY',
-      defaultModel: 'qwen/qwen3.6-27b',
+      defaultModel: 'openai/gpt-oss-120b',
       supportsTools: false,
       costTier: 'free',
       enabled: true,
     },
   });
-  console.log('Default AI Providers registered (OpenAI GPT-6 Luna, Gemini 2.5 Flash-Lite, Groq Qwen 3.6 27B).');
+  console.log('Default AI Providers registered (OpenAI GPT-6 Luna, Gemini 3.1 Flash-Lite, Groq GPT-OSS 120B).');
 
   console.log('Seeding completed successfully!');
 }

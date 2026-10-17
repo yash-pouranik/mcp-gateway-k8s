@@ -1,8 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { api, ApiKey } from '../api';
-import { Key, Plus, Copy, Check, Trash2, ShieldAlert, X } from 'lucide-react';
+import { api, ApiKey, User } from '../api';
+import { Key, Plus, Copy, Check, Trash2, ShieldAlert, X, Users, AlertTriangle, RefreshCw } from 'lucide-react';
 
-export const ApiKeysView: React.FC = () => {
+interface ApiKeysViewProps {
+  user?: User;
+}
+
+export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
+  const isAdmin = user?.role === 'admin';
+  const [scope, setScope] = useState<'my' | 'team'>(isAdmin ? 'team' : 'my');
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,12 +20,16 @@ export const ApiKeysView: React.FC = () => {
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const fetchKeys = async () => {
+  // Revoke Key Confirmation Modal
+  const [revokingKey, setRevokingKey] = useState<ApiKey | null>(null);
+  const [revoking, setRevoking] = useState(false);
+
+  const fetchKeys = async (targetScope = scope) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getApiKeys();
-      setKeys(data.keys);
+      const data = await api.getApiKeys(targetScope === 'team');
+      setKeys(data.keys || []);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch API keys');
     } finally {
@@ -28,8 +38,8 @@ export const ApiKeysView: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchKeys();
-  }, []);
+    fetchKeys(scope);
+  }, [scope]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +48,7 @@ export const ApiKeysView: React.FC = () => {
     try {
       const data = await api.createApiKey(keyName);
       setCreatedKey(data.apiKey.rawKey);
-      await fetchKeys();
+      await fetchKeys(scope);
     } catch (err: any) {
       alert(`Failed to create API key: ${err.message}`);
     } finally {
@@ -46,15 +56,17 @@ export const ApiKeysView: React.FC = () => {
     }
   };
 
-  const handleRevoke = async (id: string) => {
-    if (!confirm('Are you sure you want to revoke this API key? This action is immediate and permanent.')) {
-      return;
-    }
+  const handleConfirmRevoke = async () => {
+    if (!revokingKey) return;
+    setRevoking(true);
     try {
-      await api.revokeApiKey(id);
-      await fetchKeys();
+      await api.revokeApiKey(revokingKey.id);
+      setRevokingKey(null);
+      await fetchKeys(scope);
     } catch (err: any) {
       alert(`Failed to revoke key: ${err.message}`);
+    } finally {
+      setRevoking(false);
     }
   };
 
@@ -71,7 +83,7 @@ export const ApiKeysView: React.FC = () => {
           <div className="flex items-center space-x-2">
             <h1 className="text-xl font-bold text-white tracking-tight">API Key Credentials</h1>
             <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-700 text-zinc-300">
-              {keys.length} issued
+              {keys.length} {scope === 'team' ? 'team keys' : 'issued'}
             </span>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
@@ -79,17 +91,55 @@ export const ApiKeysView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setKeyName('');
-            setCreatedKey(null);
-            setIsModalOpen(true);
-          }}
-          className="py-2 px-3.5 rounded-lg bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center space-x-2 shadow-sm shadow-cf-orange/20"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Generate API Key</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          {/* Admin Scope Toggle */}
+          {isAdmin && (
+            <div className="flex items-center bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+              <button
+                onClick={() => setScope('team')}
+                className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium transition ${
+                  scope === 'team'
+                    ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/60'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 text-cf-orange" />
+                <span>All Team Keys</span>
+              </button>
+              <button
+                onClick={() => setScope('my')}
+                className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium transition ${
+                  scope === 'my'
+                    ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/60'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Key className="w-3.5 h-3.5 text-zinc-400" />
+                <span>My Keys</span>
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={() => fetchKeys(scope)}
+            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition shadow-sm"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-cf-orange' : ''}`} />
+          </button>
+
+          <button
+            onClick={() => {
+              setKeyName('');
+              setCreatedKey(null);
+              setIsModalOpen(true);
+            }}
+            className="py-2 px-3.5 rounded-lg bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center space-x-2 shadow-sm shadow-cf-orange/20"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Generate API Key</span>
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -108,6 +158,11 @@ export const ApiKeysView: React.FC = () => {
                 <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
                   Key Name
                 </th>
+                {scope === 'team' && (
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
+                    Owner / Member
+                  </th>
+                )}
                 <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
                   Prefix (Hashed lookup)
                 </th>
@@ -125,18 +180,43 @@ export const ApiKeysView: React.FC = () => {
             <tbody className="divide-y divide-zinc-800/60">
               {keys.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-zinc-500 text-xs">
-                    No API keys issued yet. Generate your first personalized key to connect external MCP clients (Cursor, Claude Code, MCP Inspector).
+                  <td colSpan={scope === 'team' ? 6 : 5} className="px-6 py-12 text-center text-zinc-500 text-xs">
+                    No API keys found. Generate a key to connect external MCP clients (Cursor, Claude Code, MCP Inspector).
                   </td>
                 </tr>
               ) : (
                 keys.map((k) => {
                   const isRevoked = Boolean(k.revokedAt);
+                  const isOwner = k.userId === user?.id;
+                  const canRevoke = isAdmin || isOwner;
+
                   return (
                     <tr key={k.id} className="hover:bg-zinc-900/40 transition">
                       <td className="px-5 py-3.5 whitespace-nowrap text-xs font-medium text-white">
                         {k.name}
                       </td>
+
+                      {scope === 'team' && (
+                        <td className="px-5 py-3.5 whitespace-nowrap text-xs">
+                          {k.user ? (
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium text-white">{k.user.name}</span>
+                              <span
+                                className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full border ${
+                                  k.user.role === 'admin'
+                                    ? 'bg-cf-orange/15 text-cf-orange border-cf-orange/30'
+                                    : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                                }`}
+                              >
+                                {k.user.role}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-zinc-500 font-mono text-[11px]">—</span>
+                          )}
+                        </td>
+                      )}
+
                       <td className="px-5 py-3.5 whitespace-nowrap text-xs font-mono text-cf-orange">
                         {k.keyPrefix}••••••••
                       </td>
@@ -157,9 +237,9 @@ export const ApiKeysView: React.FC = () => {
                         {new Date(k.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap text-right text-xs">
-                        {!isRevoked && (
+                        {!isRevoked && canRevoke && (
                           <button
-                            onClick={() => handleRevoke(k.id)}
+                            onClick={() => setRevokingKey(k)}
                             className="text-xs text-rose-400 hover:text-rose-300 font-medium inline-flex items-center space-x-1 p-1 rounded-md hover:bg-rose-500/10 transition"
                             title="Revoke Key"
                           >
@@ -273,6 +353,60 @@ export const ApiKeysView: React.FC = () => {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Kumo Revoke Confirmation Modal */}
+      {revokingKey && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-[#1e1e1e] border border-[#333] rounded-2xl max-w-sm w-full p-5 shadow-2xl shadow-black/80">
+            <div className="flex items-center space-x-3 text-rose-400 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-4 h-4 text-rose-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-white">Revoke API Key</h3>
+                <p className="text-[11px] text-zinc-400">Immediate access revocation</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-300 leading-relaxed mb-3">
+              Are you sure you want to revoke <span className="font-semibold text-white font-mono">{revokingKey.name}</span>
+              {revokingKey.user ? (
+                <> belonging to <span className="text-cf-orange font-medium">{revokingKey.user.name}</span></>
+              ) : ''}?
+            </p>
+
+            <div className="p-2.5 rounded-lg bg-zinc-950/70 border border-zinc-800 text-[11px] font-mono text-zinc-400 mb-4">
+              Prefix: <span className="text-cf-orange">{revokingKey.keyPrefix}••••••••</span>
+              <br />
+              Subsequent MCP calls using this key will immediately return <span className="text-rose-400">401 Unauthorized</span>.
+            </div>
+
+            <div className="flex items-center justify-end space-x-2">
+              <button
+                onClick={() => setRevokingKey(null)}
+                disabled={revoking}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-white bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/60 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRevoke}
+                disabled={revoking}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-white bg-rose-600 hover:bg-rose-500 active:bg-rose-700 transition shadow-sm disabled:opacity-50 flex items-center space-x-1.5"
+              >
+                {revoking ? (
+                  <span>Revoking...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Revoke Immediately</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

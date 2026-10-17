@@ -23,6 +23,13 @@ export interface ApiKey {
   revokedAt: string | null;
   createdAt: string;
   rawKey?: string;
+  userId?: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    role: 'admin' | 'member';
+  };
 }
 
 export interface McpServer {
@@ -154,8 +161,12 @@ export const api = {
     return res.json();
   },
 
-  async getApiKeys(): Promise<{ keys: ApiKey[] }> {
-    const res = await fetch('/api/auth/api-keys', { headers: getAuthHeaders() });
+  async getApiKeys(all?: boolean, userId?: string): Promise<{ keys: ApiKey[] }> {
+    const params = new URLSearchParams();
+    if (all) params.append('all', 'true');
+    if (userId) params.append('userId', userId);
+    const qs = params.toString();
+    const res = await fetch(`/api/auth/api-keys${qs ? `?${qs}` : ''}`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to load API keys');
     return res.json();
   },
