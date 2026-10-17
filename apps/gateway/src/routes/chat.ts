@@ -411,11 +411,17 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
     return;
   }
 
-  // 4. Autonomous Agent Loop
+  // 4. Autonomous Agent Loop with User Context Injection
+  const userName = req.user?.name || 'Team Member';
+  const userEmail = req.user?.email || '';
+  const userRole = req.user?.role || 'member';
+
   const conversation: ChatMessageInput[] = [
     {
       role: 'system',
-      content: `You are VYNN, an autonomous AI assistant for the WooCommerce & MCP Gateway platform. You have access to tools across connected systems (e.g. WooCommerce store, Notes, FakeStore). When users ask to view or modify store products, orders, notes, etc., call the respective tools. Always provide clear, helpful markdown summaries of tool results.`,
+      content: `You are VYNN, an autonomous AI assistant for the WooCommerce & MCP Gateway platform. You have access to tools across connected systems (e.g. WooCommerce store, Notes, FakeStore). When users ask to view or modify store products, orders, notes, etc., call the respective tools. Always provide clear, helpful markdown summaries of tool results.
+
+You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet or refer to the user by their name (${userName}) naturally when appropriate or when asked about their identity.`,
     },
     ...messages,
   ];
