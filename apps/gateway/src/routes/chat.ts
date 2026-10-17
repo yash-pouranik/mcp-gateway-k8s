@@ -455,6 +455,10 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
           messages: conversation,
           tools: openAiTools.length > 0 ? openAiTools : undefined,
           tool_choice: openAiTools.length > 0 ? 'auto' : undefined,
+          // GPT-6 Luna / reasoning models require reasoning_effort: "none" when using function tools in /v1/chat/completions
+          ...(executionConfig.providerName === 'openai' && openAiTools.length > 0
+            ? { reasoning_effort: 'none' }
+            : {}),
         }),
       });
 
