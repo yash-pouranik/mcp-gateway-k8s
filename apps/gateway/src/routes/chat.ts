@@ -690,7 +690,11 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
             userId: req.user!.id,
             serverId: targetServerId,
             toolName,
-            inputSummary: sanitizedArgs,
+            inputSummary: {
+              parameters: sanitizedArgs,
+              response: result,
+              source: 'vynn_chat_agent',
+            },
             durationMs: duration,
             success: true,
           });
@@ -715,7 +719,10 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
             userId: req.user!.id,
             serverId: targetServerId,
             toolName,
-            inputSummary: sanitizedArgs,
+            inputSummary: {
+              parameters: sanitizedArgs,
+              source: 'vynn_chat_agent',
+            },
             durationMs: duration,
             success: false,
             errorMsg: err.message || 'Execution failed',

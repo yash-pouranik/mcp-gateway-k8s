@@ -18,6 +18,8 @@ declare global {
     interface Request {
       user?: AuthenticatedUser;
       apiKeyId?: string;
+      apiKeyPrefix?: string;
+      apiKeyName?: string;
     }
   }
 }
@@ -93,8 +95,8 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
     return;
   }
 
-  // Case A: Is it an API Key (starts with mcp_live_)?
-  if (token.startsWith('mcp_live_')) {
+  // Case A: Is it an API Key (starts with mcp_live_ or urumi_live_)?
+  if (token.startsWith('mcp_live_') || token.startsWith('urumi_live_')) {
     const hashed = hashApiKey(token);
     const apiKey = await prisma.apiKey.findUnique({
       where: { keyHash: hashed },
@@ -118,7 +120,7 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
       await recordAuditLog({
         userId: apiKey.userId,
         toolName: 'mcp.authenticate',
-        inputSummary: { keyId: apiKey.id, keyPrefix: apiKey.keyPrefix },
+        inputSummary: { keyId: apiKey.id, keyPrefix: apiKey.keyPrefix, keyName: apiKey.name },
         durationMs: Date.now() - startTime,
         success: false,
         errorMsg: 'API key revoked',
@@ -134,6 +136,8 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
       role: apiKey.user.role,
     };
     req.apiKeyId = apiKey.id;
+    req.apiKeyPrefix = apiKey.keyPrefix;
+    req.apiKeyName = apiKey.name;
     next();
     return;
   }

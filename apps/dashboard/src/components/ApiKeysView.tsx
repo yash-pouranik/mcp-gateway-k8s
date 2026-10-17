@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, ApiKey, User } from '../api';
-import { Key, Plus, Copy, Check, Trash2, ShieldAlert, X, Users, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Key, Plus, Copy, Check, Trash2, ShieldAlert, X, Users, AlertTriangle, RefreshCw, Activity } from 'lucide-react';
 
 interface ApiKeysViewProps {
   user?: User;
@@ -167,6 +167,9 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
                   Prefix (Hashed lookup)
                 </th>
                 <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
+                  Usage (Calls)
+                </th>
+                <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
                   Status
                 </th>
                 <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
@@ -180,7 +183,7 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
             <tbody className="divide-y divide-zinc-800/60">
               {keys.length === 0 ? (
                 <tr>
-                  <td colSpan={scope === 'team' ? 6 : 5} className="px-6 py-12 text-center text-zinc-500 text-xs">
+                  <td colSpan={scope === 'team' ? 7 : 6} className="px-6 py-12 text-center text-zinc-500 text-xs">
                     No API keys found. Generate a key to connect external MCP clients (Cursor, Claude Code, MCP Inspector).
                   </td>
                 </tr>
@@ -219,6 +222,18 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
 
                       <td className="px-5 py-3.5 whitespace-nowrap text-xs font-mono text-cf-orange">
                         {k.keyPrefix}••••••••
+                      </td>
+                      <td className="px-5 py-3.5 whitespace-nowrap text-xs font-mono">
+                        <span
+                          className={`inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[11px] ${
+                            (k.callCount || 0) > 0
+                              ? 'bg-cf-orange/10 text-cf-orange border border-cf-orange/20 font-medium'
+                              : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
+                          }`}
+                        >
+                          <Activity className="w-3 h-3" />
+                          <span>{k.callCount || 0} calls</span>
+                        </span>
                       </td>
                       <td className="px-5 py-3.5 whitespace-nowrap text-xs">
                         {isRevoked ? (

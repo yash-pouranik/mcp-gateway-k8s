@@ -24,6 +24,7 @@ export interface ApiKey {
   createdAt: string;
   rawKey?: string;
   userId?: string;
+  callCount?: number;
   user?: {
     id: string;
     name: string;

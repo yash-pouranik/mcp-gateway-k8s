@@ -14,6 +14,8 @@ import {
   Server,
   User as UserIcon,
   Activity,
+  Key,
+  Cpu,
 } from 'lucide-react';
 
 interface AuditLogViewProps {
@@ -561,7 +563,25 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
                         <td className="px-4 py-3 whitespace-nowrap text-xs">
                           {log.user ? (
                             <div>
-                              <div className="font-medium text-white">{log.user.name}</div>
+                              <div className="font-medium text-white flex items-center space-x-1.5">
+                                <span>{log.user.name}</span>
+                                {log.inputSummary?.keyName ? (
+                                  <span
+                                    className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20"
+                                    title={`API Key: ${log.inputSummary.keyName}`}
+                                  >
+                                    key: {log.inputSummary.keyName}
+                                  </span>
+                                ) : log.inputSummary?.keyPrefix ? (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                    {log.inputSummary.keyPrefix}••••
+                                  </span>
+                                ) : log.inputSummary?.source === 'vynn_chat_agent' ? (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-cf-orange/15 text-cf-orange border border-cf-orange/30">
+                                    VYNN Chat
+                                  </span>
+                                ) : null}
+                              </div>
                               <div className="text-[10px] font-mono text-zinc-500">{log.user.email}</div>
                             </div>
                           ) : (
@@ -594,20 +614,71 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
 
                       {isExpanded && (
                         <tr className="bg-black/60">
-                          <td colSpan={7} className="px-8 py-3.5">
-                            <div className="space-y-2.5">
+                          <td colSpan={7} className="px-8 py-4">
+                            <div className="space-y-3.5">
+                              {/* Auth / Client Attribution Banner */}
+                              <div className="flex flex-wrap items-center gap-2.5 p-3 rounded-xl bg-zinc-900/70 border border-zinc-800 text-xs">
+                                <span className="text-zinc-500 font-mono text-[11px] uppercase tracking-wider">Auth Context:</span>
+                                {log.inputSummary?.keyPrefix ? (
+                                  <span className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/25 font-mono text-[11px]">
+                                    <Key className="w-3 h-3 text-amber-400" />
+                                    <span>
+                                      {log.inputSummary.keyName || 'External Client'} ({log.inputSummary.keyPrefix}••••••••)
+                                    </span>
+                                  </span>
+                                ) : log.inputSummary?.source === 'vynn_chat_agent' ? (
+                                  <span className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-lg bg-cf-orange/10 text-cf-orange border border-cf-orange/30 font-mono text-[11px]">
+                                    <Cpu className="w-3 h-3" />
+                                    <span>VYNN Autonomous Studio Agent</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-zinc-400 font-mono text-[11px]">Web Console Session</span>
+                                )}
+                                <span className="text-zinc-700 font-mono">|</span>
+                                <span className="text-zinc-500 font-mono text-[11px]">Server:</span>
+                                <span className="text-zinc-200 font-mono text-[11px]">
+                                  {log.server?.name || (log.serverId ? 'Internal MCP' : 'Gateway Hub')}
+                                </span>
+                                <span className="text-zinc-700 font-mono">|</span>
+                                <span className="text-zinc-500 font-mono text-[11px]">Duration:</span>
+                                <span className="text-zinc-200 font-mono text-[11px]">{log.durationMs}ms</span>
+                              </div>
+
                               {log.errorMsg && (
                                 <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-mono">
-                                  <strong>Error Reason:</strong> {log.errorMsg}
+                                  <strong>Execution Error:</strong> {log.errorMsg}
                                 </div>
                               )}
-                              <div>
-                                <div className="text-[10px] font-mono uppercase text-zinc-500 mb-1">
-                                  Input Parameters JSON
+
+                              {/* 2-Column Split: Input Parameters vs Response Output */}
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+                                <div>
+                                  <div className="text-[10px] font-mono uppercase text-zinc-500 mb-1.5 flex items-center justify-between">
+                                    <span>Input Parameters JSON</span>
+                                    <span className="text-[10px] text-zinc-600 font-mono">Sent to Tool</span>
+                                  </div>
+                                  <pre className="p-3 bg-zinc-950 rounded-xl text-xs font-mono text-zinc-300 overflow-x-auto border border-zinc-800 max-h-64 custom-scrollbar">
+                                    {JSON.stringify(log.inputSummary?.parameters || log.inputSummary, null, 2)}
+                                  </pre>
                                 </div>
-                                <pre className="p-3 bg-zinc-950 rounded-xl text-xs font-mono text-zinc-300 overflow-x-auto border border-zinc-800">
-                                  {JSON.stringify(log.inputSummary, null, 2)}
-                                </pre>
+
+                                <div>
+                                  <div className="text-[10px] font-mono uppercase text-zinc-500 mb-1.5 flex items-center justify-between">
+                                    <span>Upstream Response / Output JSON</span>
+                                    {log.inputSummary?.response !== undefined ? (
+                                      <span className="text-[10px] text-emerald-400 font-mono">Captured Payload</span>
+                                    ) : (
+                                      <span className="text-[10px] text-zinc-500 font-mono">Status Output</span>
+                                    )}
+                                  </div>
+                                  <pre className="p-3 bg-zinc-950 rounded-xl text-xs font-mono text-zinc-300 overflow-x-auto border border-zinc-800 max-h-64 custom-scrollbar">
+                                    {log.inputSummary?.response !== undefined
+                                      ? JSON.stringify(log.inputSummary.response, null, 2)
+                                      : log.success
+                                      ? JSON.stringify({ status: 'Success (Cleanly executed upstream)' }, null, 2)
+                                      : JSON.stringify({ status: 'Failed', error: log.errorMsg }, null, 2)}
+                                  </pre>
+                                </div>
                               </div>
                             </div>
                           </td>

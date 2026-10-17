@@ -81,7 +81,31 @@ router.get('/api-keys', requireUserAuth, async (req: Request, res: Response): Pr
     },
     orderBy: { createdAt: 'desc' },
   });
-  res.json({ keys });
+
+  // Compute tool call telemetry counts per keyPrefix
+  const countsMap = new Map<string, number>();
+  try {
+    const rawCounts: Array<{ key_prefix: string; count: bigint }> = await prisma.$queryRaw`
+      SELECT COALESCE(input_summary->>'apiKeyPrefix', input_summary->>'keyPrefix') as key_prefix, COUNT(*) as count
+      FROM audit_log
+      WHERE (input_summary->>'apiKeyPrefix' IS NOT NULL OR input_summary->>'keyPrefix' IS NOT NULL)
+      GROUP BY COALESCE(input_summary->>'apiKeyPrefix', input_summary->>'keyPrefix');
+    `;
+    for (const r of rawCounts) {
+      if (r.key_prefix) {
+        countsMap.set(r.key_prefix, Number(r.count));
+      }
+    }
+  } catch (_) {
+    // Non-fatal fallback
+  }
+
+  const enrichedKeys = keys.map((k) => ({
+    ...k,
+    callCount: countsMap.get(k.keyPrefix) || 0,
+  }));
+
+  res.json({ keys: enrichedKeys });
 });
 
 
