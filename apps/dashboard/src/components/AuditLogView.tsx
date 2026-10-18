@@ -619,11 +619,11 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
                               {/* Auth / Client Attribution Banner */}
                               <div className="flex flex-wrap items-center gap-2.5 p-3 rounded-xl bg-zinc-900/70 border border-zinc-800 text-xs">
                                 <span className="text-zinc-500 font-mono text-[11px] uppercase tracking-wider">Auth Context:</span>
-                                {log.inputSummary?.keyPrefix ? (
+                                {(log.inputSummary?.keyPrefix || log.inputSummary?.apiKeyPrefix) ? (
                                   <span className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/25 font-mono text-[11px]">
                                     <Key className="w-3 h-3 text-amber-400" />
                                     <span>
-                                      {log.inputSummary.keyName || 'External Client'} ({log.inputSummary.keyPrefix}••••••••)
+                                      {log.inputSummary.keyName || log.inputSummary.apiKeyName || 'External Client'} ({log.inputSummary.keyPrefix || log.inputSummary.apiKeyPrefix}••••••••)
                                     </span>
                                   </span>
                                 ) : log.inputSummary?.source === 'vynn_chat_agent' ? (

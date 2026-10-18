@@ -27,14 +27,50 @@ declare global {
 /**
  * Middleware: Requires valid JWT from Authorization: Bearer <jwt>
  */
-export async function requireUserAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+/**
+ * Sanitize incoming token string:
+ * Strips whitespace, quotes ("..."), and angle brackets (<...>).
+ */
+function sanitizeToken(raw: string): string {
+  let cleaned = raw.trim();
+  // Strip surrounding quotes
+  cleaned = cleaned.replace(/^["']|["']$/g, '').trim();
+  // Strip surrounding angle brackets e.g. <token> from docs/prompts
+  cleaned = cleaned.replace(/^<|>$/g, '').trim();
+  return cleaned;
+}
+
+/**
+ * Extract token from Authorization header or x-api-key header.
+ * Case-insensitive match on Bearer / bearer.
+ */
+function extractBearerToken(req: Request): string | undefined {
+  const xApiKey = req.headers['x-api-key'];
+  if (typeof xApiKey === 'string' && xApiKey.trim()) {
+    return sanitizeToken(xApiKey);
+  }
+
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (typeof authHeader === 'string') {
+    const match = authHeader.match(/^Bearer\s+(.*)$/i);
+    if (match && match[1]) {
+      return sanitizeToken(match[1]);
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Middleware: Requires valid JWT from Authorization: Bearer <jwt>
+ */
+export async function requireUserAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const token = extractBearerToken(req);
+  if (!token) {
     res.status(401).json({ error: 'Missing or malformed Authorization header' });
     return;
   }
 
-  const token = authHeader.split(' ')[1];
   try {
     const payload = jwt.verify(token, JWT_SECRET) as AuthenticatedUser;
     const user = await prisma.user.findUnique({
@@ -69,17 +105,13 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
 /**
  * Middleware for MCP endpoint:
  * Accepts either:
- *  1. API Key via `Authorization: Bearer mcp_live_...` or `x-api-key: mcp_live_...`
+ *  1. API Key via `Authorization: Bearer <key>` or `x-api-key: <key>`
  *  2. Dashboard JWT via `Authorization: Bearer <jwt>`
  * If an API key is revoked or invalid, an audit log rejection entry is recorded!
  */
 export async function authenticateMcpClient(req: Request, res: Response, next: NextFunction): Promise<void> {
   const startTime = Date.now();
-  let token = req.headers['x-api-key'] as string | undefined;
-
-  if (!token && req.headers.authorization?.startsWith('Bearer ')) {
-    token = req.headers.authorization.slice(7).trim();
-  }
+  const token = extractBearerToken(req);
 
   if (!token) {
     // Log unauthenticated attempt
@@ -95,27 +127,14 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
     return;
   }
 
-  // Case A: Is it an API Key (starts with mcp_live_ or urumi_live_)?
-  if (token.startsWith('mcp_live_') || token.startsWith('urumi_live_')) {
-    const hashed = hashApiKey(token);
-    const apiKey = await prisma.apiKey.findUnique({
-      where: { keyHash: hashed },
-      include: { user: true },
-    });
+  // 1. First check if it matches an API key in the database via SHA-256 hash lookup
+  const hashed = hashApiKey(token);
+  const apiKey = await prisma.apiKey.findUnique({
+    where: { keyHash: hashed },
+    include: { user: true },
+  });
 
-    if (!apiKey) {
-      await recordAuditLog({
-        userId: null,
-        toolName: 'mcp.authenticate',
-        inputSummary: { ip: req.ip, keyPrefix: token.slice(0, 16) },
-        durationMs: Date.now() - startTime,
-        success: false,
-        errorMsg: 'Invalid API key',
-      });
-      res.status(401).json({ error: 'Invalid API key' });
-      return;
-    }
-
+  if (apiKey) {
     if (apiKey.revokedAt !== null) {
       await recordAuditLog({
         userId: apiKey.userId,
@@ -142,30 +161,45 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
     return;
   }
 
-  // Case B: Is it a Dashboard JWT?
-  try {
-    const payload = jwt.verify(token, JWT_SECRET) as AuthenticatedUser;
-    const user = await prisma.user.findUnique({
-      where: { id: payload.id },
-      select: { id: true, email: true, name: true, role: true },
-    });
+  // 2. If not an API key, check if it is a JWT token (split by dots has 3 segments)
+  if (token.split('.').length === 3) {
+    try {
+      const payload = jwt.verify(token, JWT_SECRET) as AuthenticatedUser;
+      const user = await prisma.user.findUnique({
+        where: { id: payload.id },
+        select: { id: true, email: true, name: true, role: true },
+      });
 
-    if (!user) {
-      res.status(401).json({ error: 'User no longer exists' });
+      if (!user) {
+        res.status(401).json({ error: 'User no longer exists' });
+        return;
+      }
+
+      req.user = user;
+      next();
+      return;
+    } catch (err) {
+      await recordAuditLog({
+        userId: null,
+        toolName: 'mcp.authenticate',
+        inputSummary: { ip: req.ip, authType: 'jwt' },
+        durationMs: Date.now() - startTime,
+        success: false,
+        errorMsg: 'Invalid or expired session token',
+      });
+      res.status(401).json({ error: 'Invalid or expired session token' });
       return;
     }
-
-    req.user = user;
-    next();
-  } catch (err) {
-    await recordAuditLog({
-      userId: null,
-      toolName: 'mcp.authenticate',
-      inputSummary: { ip: req.ip },
-      durationMs: Date.now() - startTime,
-      success: false,
-      errorMsg: 'Invalid token or API key format',
-    });
-    res.status(401).json({ error: 'Invalid token or API key' });
   }
+
+  // 3. Otherwise, it is an invalid API key
+  await recordAuditLog({
+    userId: null,
+    toolName: 'mcp.authenticate',
+    inputSummary: { ip: req.ip, keyPrefix: token.slice(0, 16) },
+    durationMs: Date.now() - startTime,
+    success: false,
+    errorMsg: 'Invalid API key',
+  });
+  res.status(401).json({ error: 'Invalid API key' });
 }
