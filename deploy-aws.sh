@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+# Ensure KUBECONFIG is set for both root and normal users
+export KUBECONFIG=${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}
+
 echo "=========================================================="
 echo "🚀 Starting AWS EC2 K3s Deployment for MCP Platform"
 echo "=========================================================="
@@ -40,20 +43,23 @@ echo "⚓ Deploying Helm Charts..."
 
 echo " -> Deploying Extra MCPs (fakestore & notes)..."
 helm upgrade --install extra-mcps helm/charts/extra-mcps \
+  --kubeconfig /etc/rancher/k3s/k3s.yaml \
   -f helm/values-aws.yaml \
   -n extra-mcps
 
 echo " -> Deploying WooCommerce Store & WooCommerce MCP..."
 helm upgrade --install woocommerce-store helm/charts/woocommerce-store \
+  --kubeconfig /etc/rancher/k3s/k3s.yaml \
   -f helm/values-aws.yaml \
   -n woocommerce
 
 echo " -> Deploying Gateway Hub & React Dashboard..."
 helm upgrade --install gateway helm/charts/gateway \
+  --kubeconfig /etc/rancher/k3s/k3s.yaml \
   -f helm/values-aws.yaml \
   -n gateway
 
 echo "=========================================================="
 echo "✅ Deployment submitted! Checking pods status..."
 echo "=========================================================="
-kubectl get pods -A
+kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml get pods -A
