@@ -18,15 +18,43 @@ An enterprise Kubernetes-native hosting platform and Model Context Protocol (MCP
 
 ---
 
+## Live Production Deployment (AWS EC2 K3s)
+
+The entire platform is deployed live on a single-node AWS EC2 production Kubernetes (K3s) cluster:
+- **Web Console & AI Agent:** [https://vynn.urbackend.in](https://vynn.urbackend.in)
+- **WooCommerce Storefront:** [https://store.urbackend.in](https://store.urbackend.in)
+- **Streamable HTTP MCP Endpoint:** `https://vynn.urbackend.in/mcp`
+
+---
+
+## Standout Features Implemented (Beyond Core Requirements)
+
+1. **Production VPS & Cloud Portability (Standout #1):**
+   - Packaged and deployed via Helm on **AWS EC2 (Ubuntu 24.04 LTS, K3s single-node cluster)**.
+   - Pinned to custom domain `urbackend.in` using Ingress-Nginx with zero code modifications between local and production.
+2. **Granular Tool Permissions & RBAC (Standout #2):**
+   - **Admin vs. Member Separation:** Admins possess unrestricted access to all 17 tools (including product creation, status mutation, note deletion).
+   - Regular **Members** are restricted strictly to safe query/read tools (`list_products`, `get_product`, `list_orders`, `get_order`, `list_customers`, `list_notes`, `get_note`, `fakestore_*`).
+   - Mutating tools are dynamically stripped from `tools/list` for members and return **403 Forbidden** (`RBAC_PERMISSION_DENIED`) if invoked directly.
+3. **Enterprise Security Hardening (Standout #6):**
+   - **SSRF Defense Engine:** Validates all registered URLs against in-cluster whitelists and rejects RFC1918 private subnets, loopback, and cloud metadata (`169.254.169.254`).
+   - **At-Rest AES-256-GCM Encryption:** Upstream credentials encrypted in PostgreSQL; zero credential leakage to clients or browser.
+   - **Zero-Trust NetworkPolicies:** Default-deny ingress across all 3 namespaces with micro-segmented pinholes. Upstream MCP servers and databases run as private ClusterIPs with zero public Ingress.
+   - **Fast Indexed SHA-256 API Keys:** Machine-to-machine tokens (`mcp_live_<hex>`) authenticated via indexed SHA-256 hash queries.
+4. **Deep Observability & Telemetry (Standout #8):**
+   - Per-tool execution latency (ms), input/output JSON inspector, active background health probers, and per-key usage counters.
+
+---
+
 ## Key Features
 
-- **Centralized MCP Aggregation:** Connects multiple upstream MCP servers once; team members access all tools through a single URL (`https://dashboard.localtest.me/mcp`) using personal API keys.
+- **Centralized MCP Aggregation:** Connects multiple upstream MCP servers once; team members access all tools through a single URL (`https://vynn.urbackend.in/mcp` or `https://dashboard.localtest.me/mcp`) using personal API keys.
 - **Deterministic Namespacing:** Resolves tool collisions deterministically using `{server_slug}__{tool_name}` (e.g. `woocommerce__list_products`, `fakestore__get_product`, `notes__create_note`).
-- **Autonomous AI Agent Studio:** Multi-turn tool execution loop powered by OpenAI (`gpt-4o-mini`), rendering formatted Markdown, product listings, and live store links.
+- **Autonomous AI Agent Studio:** Multi-turn tool execution loop powered by official OpenAI SDK with multi-provider dynamic routing (OpenAI, Gemini, Groq, Ollama), rendering live Markdown and tool execution timelines.
 - **Micro-Segmented Security:** Strict Kubernetes NetworkPolicies enforce default-deny ingress and zero-trust pinhole communication between microservices.
-- **Fast Indexed Authentication:** $O(1)$ token authentication with indexed SHA-256 hashes (`urumi_live_<hex>`) and instant cryptographic revocation.
+- **Fast Indexed Authentication:** $O(1)$ token authentication with indexed SHA-256 hashes (`mcp_live_<hex>`) and instant cryptographic revocation.
 - **Zero Credential Leakage:** Upstream WooCommerce REST credentials are encrypted with AES-256-GCM and never exposed to clients or browser frontends.
-- **100% Helm-Native:** Fully portable across local development (`k3d` / `Kind`) and production VPS (`k3s`) with configuration-only changes via `helm/values-local.yaml` and `helm/values-prod.yaml`.
+- **100% Helm-Native:** Fully portable across local development (`k3d` / `Kind`) and production VPS (`k3s`) with configuration-only changes via `helm/values-local.yaml` and `helm/values-aws.yaml`.
 
 ---
 

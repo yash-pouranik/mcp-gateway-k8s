@@ -94,6 +94,42 @@ export const TOOLS: Tool[] = [
       },
       required: ['note_id']
     }
+  },
+  {
+    name: 'get_note',
+    description: 'Retrieve full details of a specific note by its ID.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        note_id: {
+          type: 'string',
+          description: 'Unique ID of the note (e.g. "note_1")'
+        }
+      },
+      required: ['note_id']
+    }
+  },
+  {
+    name: 'update_note',
+    description: 'Update the title or body of an existing note.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        note_id: {
+          type: 'string',
+          description: 'ID of the note to update'
+        },
+        title: {
+          type: 'string',
+          description: 'New title for the note'
+        },
+        content: {
+          type: 'string',
+          description: 'New content body for the note'
+        }
+      },
+      required: ['note_id']
+    }
   }
 ];
 
@@ -135,6 +171,27 @@ export async function executeTool(name: string, args: Record<string, any> = {}) 
       notesStore.delete(id);
       return {
         content: [{ type: 'text', text: JSON.stringify({ success: true, deleted_id: id }) }]
+      };
+    }
+
+    case 'get_note': {
+      const id = String(args.note_id);
+      const note = notesStore.get(id);
+      if (!note) throw new Error(`Note not found: ${id}`);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(note, null, 2) }]
+      };
+    }
+
+    case 'update_note': {
+      const id = String(args.note_id);
+      const existing = notesStore.get(id);
+      if (!existing) throw new Error(`Note not found: ${id}`);
+      if (args.title) existing.title = String(args.title);
+      if (args.content) existing.content = String(args.content);
+      notesStore.set(id, existing);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(existing, null, 2) }]
       };
     }
 

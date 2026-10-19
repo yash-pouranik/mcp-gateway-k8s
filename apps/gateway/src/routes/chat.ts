@@ -3,6 +3,7 @@ import { prisma } from '../db.js';
 import { requireUserAuth, requireAdmin } from '../middleware/auth.js';
 import { upstreamManager } from '../mcp/upstream.js';
 import { recordAuditLog } from '../services/audit.js';
+import { isRestrictedTool } from '../mcp/server.js';
 import OpenAI from 'openai';
 import { aiRouter, createOpenAIClient } from '../services/aiRouter.js';
 
@@ -337,6 +338,10 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
     const exploreStart = Date.now();
     try {
       upstreamTools = await upstreamManager.aggregateTools();
+      const userRole = req.user?.role || 'member';
+      if (userRole !== 'admin') {
+        upstreamTools = upstreamTools.filter((t) => !isRestrictedTool(t.gatewayName));
+      }
       sendEvent('activity_updated', {
         id: 'act-explore',
         status: 'completed',

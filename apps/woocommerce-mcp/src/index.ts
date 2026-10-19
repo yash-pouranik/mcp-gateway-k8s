@@ -124,6 +124,87 @@ export const TOOLS: Tool[] = [
       },
       required: ['order_id', 'status']
     }
+  },
+  {
+    name: 'get_product',
+    description: 'Retrieve full details of a specific WooCommerce product by product ID.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        product_id: {
+          type: 'number',
+          description: 'Unique ID of the product'
+        }
+      },
+      required: ['product_id']
+    }
+  },
+  {
+    name: 'update_product',
+    description: 'Update fields of an existing product (price, description, stock status, etc.).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        product_id: {
+          type: 'number',
+          description: 'Unique ID of the product to update'
+        },
+        name: {
+          type: 'string',
+          description: 'Updated product title'
+        },
+        regular_price: {
+          type: 'string',
+          description: 'Updated regular price in store currency (e.g. "29.99")'
+        },
+        description: {
+          type: 'string',
+          description: 'Updated product description'
+        },
+        stock_status: {
+          type: 'string',
+          enum: ['instock', 'outofstock', 'onbackorder'],
+          description: 'Updated stock availability status'
+        }
+      },
+      required: ['product_id']
+    }
+  },
+  {
+    name: 'delete_product',
+    description: 'Permanently remove a product from the WooCommerce store catalog.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        product_id: {
+          type: 'number',
+          description: 'Unique ID of the product to delete'
+        },
+        force: {
+          type: 'boolean',
+          description: 'Whether to permanently delete instead of trashing (default: true)'
+        }
+      },
+      required: ['product_id']
+    }
+  },
+  {
+    name: 'list_customers',
+    description: 'List registered customers in the WooCommerce store.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        per_page: {
+          type: 'number',
+          description: 'Number of customer records to retrieve (default: 10)'
+        },
+        role: {
+          type: 'string',
+          enum: ['all', 'customer', 'administrator'],
+          description: 'Filter customers by WordPress role'
+        }
+      }
+    }
   }
 ];
 
@@ -202,6 +283,58 @@ export async function executeTool(name: string, args: Record<string, any> = {}) 
           {
             type: 'text',
             text: JSON.stringify(updated, null, 2)
+          }
+        ]
+      };
+    }
+
+    case 'get_product': {
+      const product = await wcClient.getProduct(args.product_id);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(product, null, 2)
+          }
+        ]
+      };
+    }
+
+    case 'update_product': {
+      const { product_id, ...updateData } = args;
+      const updated = await wcClient.updateProduct(product_id, updateData);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(updated, null, 2)
+          }
+        ]
+      };
+    }
+
+    case 'delete_product': {
+      const deleted = await wcClient.deleteProduct(args.product_id, args.force !== false);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(deleted, null, 2)
+          }
+        ]
+      };
+    }
+
+    case 'list_customers': {
+      const customers = await wcClient.listCustomers({
+        per_page: args?.per_page ? Number(args.per_page) : undefined,
+        role: args?.role ? String(args.role) : undefined
+      });
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(customers, null, 2)
           }
         ]
       };

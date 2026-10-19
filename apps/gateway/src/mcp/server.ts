@@ -3,6 +3,30 @@ import { upstreamManager } from './upstream.js';
 import { recordAuditLog } from '../services/audit.js';
 
 /**
+ * Restricted tools that require 'admin' role.
+ * Regular 'member' users can only read/query (e.g. list_products, get_product, list_orders, get_order, list_notes, get_note).
+ * Mutating or destructive actions (create, update, delete) are strictly restricted.
+ */
+export const RESTRICTED_ADMIN_TOOLS = new Set([
+  'woocommerce__create_product',
+  'woocommerce__update_product',
+  'woocommerce__delete_product',
+  'woocommerce__update_order_status',
+  'woocommerce__update_order',
+  'notes__create_note',
+  'notes__update_note',
+  'notes__delete_note',
+]);
+
+export function isRestrictedTool(toolName: string): boolean {
+  if (RESTRICTED_ADMIN_TOOLS.has(toolName)) return true;
+  if (toolName.includes('__create_') || toolName.includes('__delete_') || toolName.includes('__update_')) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Handle incoming JSON-RPC 2.0 requests at /mcp
  * Compliant with Streamable HTTP MCP transport specifications.
  */
@@ -21,6 +45,7 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
   const { method, params, id } = jsonRpcMessage;
   const user = req.user;
   const userId = user?.id || null;
+  const userRole = user?.role || 'member';
 
   try {
     let result: any;
@@ -35,7 +60,13 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
       res.status(204).end();
       return;
     } else if (method === 'tools/list') {
-      const tools = await upstreamManager.aggregateTools();
+      let tools = await upstreamManager.aggregateTools();
+
+      // Granular RBAC: Filter out mutating tools for non-admin users
+      if (userRole !== 'admin') {
+        tools = tools.filter((t) => !isRestrictedTool(t.gatewayName));
+      }
+
       result = {
         tools: tools.map((t) => ({
           name: t.gatewayName,
@@ -48,6 +79,40 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
       const toolName = params?.name;
       const toolArgs = params?.arguments || {};
       let targetServerId: string | null = null;
+
+      // Granular RBAC: Enforce role-based tool restrictions
+      if (userRole !== 'admin' && isRestrictedTool(toolName)) {
+        const errorMsg = `Permission Denied: Tool '${toolName}' requires admin privileges. User role '${userRole}' is not authorized.`;
+
+        await recordAuditLog({
+          userId,
+          serverId: null,
+          toolName,
+          inputSummary: {
+            parameters: toolArgs,
+            apiKeyId: req.apiKeyId || null,
+            apiKeyPrefix: req.apiKeyPrefix || null,
+            keyPrefix: req.apiKeyPrefix || null,
+            apiKeyName: req.apiKeyName || null,
+            keyName: req.apiKeyName || null,
+            source: req.apiKeyPrefix ? 'external_client' : 'dashboard_jwt',
+            rejectionReason: 'RBAC_PERMISSION_DENIED',
+          },
+          durationMs: Date.now() - startTime,
+          success: false,
+          errorMsg,
+        });
+
+        res.status(403).json({
+          jsonrpc: '2.0',
+          id: id ?? null,
+          error: {
+            code: -32003,
+            message: errorMsg,
+          },
+        });
+        return;
+      }
 
       try {
         const callRes = await upstreamManager.callTool(toolName, toolArgs);

@@ -109,4 +109,35 @@ export class WooCommerceClient {
       body: JSON.stringify({ status })
     });
   }
+
+  // 6. Get Product by ID
+  async getProduct(productId: number | string): Promise<any> {
+    return this.request<any>(`/products/${productId}`);
+  }
+
+  // 7. Update Product
+  async updateProduct(productId: number | string, data: Record<string, any>): Promise<any> {
+    return this.request<any>(`/products/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  // 8. Delete Product
+  async deleteProduct(productId: number | string, force = true): Promise<any> {
+    return this.request<any>(`/products/${productId}?force=${force}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // 9. List Customers
+  async listCustomers(params?: { per_page?: number; role?: string }): Promise<any[]> {
+    const query = new URLSearchParams();
+    if (params?.per_page) query.set('per_page', params.per_page.toString());
+    if (params?.role) query.set('role', params.role);
+
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return this.request<any[]>(`/customers${qs}`);
+  }
 }
+

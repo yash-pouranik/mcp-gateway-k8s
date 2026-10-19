@@ -143,4 +143,35 @@ The entire platform is packaged into three standalone Helm charts:
 2. `helm/charts/woocommerce-store`: WordPress, MariaDB StatefulSet, Custom WooCommerce MCP server, and WP-CLI provisioner job.
 3. `helm/charts/extra-mcps`: FakeStore and Notes MCP servers.
 
-**Zero Configuration Code Changes:** Transitioning between local development (`k3d`) and production VPS (`k3s`) requires only switching between `helm/values-local.yaml` and `helm/values-prod.yaml`.
+**Zero Configuration Code Changes:** Transitioning between local development (`k3d`) and production VPS (`k3s`) requires only switching between `helm/values-local.yaml` and `helm/values-aws.yaml` (or `values-prod.yaml`).
+
+---
+
+## 6. Architectural Tradeoffs & Technical Rationale
+
+### 6.1 Transport Layer: Streamable HTTP vs. stdio
+- **Decision:** The entire platform standardizes exclusively on **Streamable HTTP (JSON-RPC over POST + SSE)**. stdio transport is strictly rejected.
+- **Tradeoff Analysis:**
+  - *stdio (Standard I/O):* While simple for local desktop CLI tools (like basic Claude Desktop apps), stdio requires spawning sub-processes on the host machine. In a distributed Kubernetes environment, stdio cannot traverse network boundaries, cannot be load-balanced across multiple pod replicas, cannot be authenticated with bearer tokens or TLS, and fails completely under container micro-segmentation.
+  - *Streamable HTTP:* Enables stateless, horizontally scalable microservices. Upstream MCP servers run as independent Kubernetes Deployments behind standard `ClusterIP` services, communicate via in-cluster DNS, support HTTP keep-alives and timeouts, and allow the Gateway to operate as a true multi-tenant reverse proxy.
+
+### 6.2 Store Integration: WooCommerce REST API v3 vs. WP-CLI
+- **Decision:** The custom `woocommerce-mcp` microservice communicates with the WordPress store via the official **WooCommerce REST API v3**, authenticated with Consumer Key and Secret.
+- **Tradeoff Analysis:**
+  - *WP-CLI Execution:* Spawning `wp eval` or `wp wc ...` from Node.js requires mounting shared volumes across pods or using SSH/exec hooks into the WordPress container. This incurs high process-fork overhead, slow cold starts, brittle PHP execution environments, and complex concurrency locking on the MySQL database.
+  - *REST API v3:* Provides clean, non-blocking asynchronous HTTP calls, structured JSON schemas, native WooCommerce validation, and standard HTTP response status codes. The MCP server remains decoupled from the WordPress container lifecycle, allowing independent scaling and canary deployments.
+
+### 6.3 Tool Collision Handling: Deterministic Slug Namespacing
+- **Decision:** Every aggregated tool is exposed through the Gateway using the deterministic namespacing convention `{server_slug}__{tool_name}` (e.g. `woocommerce__list_products` vs `fakestore__list_products`).
+- **Tradeoff Analysis:**
+  - Multiple registered MCP servers frequently expose tools with identical names (e.g. `list_products`, `get_item`, `create_order`).
+  - Without namespacing, the LLM experiences schema ambiguity, and tool execution becomes non-deterministic.
+  - Our double-underscore separator (`__`) allows $O(1)$ splitting on the first delimiter: the left token routes to the target upstream server in PostgreSQL, and the right token is dispatched to the upstream MCP container as the clean, un-prefixed tool name.
+
+### 6.4 Production VPS Portability Paradigm
+- **Configuration Parity:** The same three Helm charts (`gateway`, `woocommerce-store`, `extra-mcps`) deploy identically on a local laptop (`k3d`) and on a live cloud VPS (AWS EC2 K3s).
+- **Environment Differences Handled via Helm Values:**
+  - **Domains & Routing:** Local environment uses wildcard loopback `localtest.me` (`dashboard.localtest.me`, `store.localtest.me`). Production uses real registered domains (`vynn.urbackend.in`, `store.urbackend.in`).
+  - **Storage Classes:** Uses built-in `local-path` storage provider across both environments, ensuring consistent PVC volume binding without cloud-specific CSI driver lock-in.
+  - **Secrets Management:** Injected through Kubernetes Secret manifests (`gateway-secrets`, `wordpress-secret`, `mariadb-secret`), keeping sensitive keys out of source control.
+
