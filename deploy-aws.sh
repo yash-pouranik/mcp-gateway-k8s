@@ -9,31 +9,31 @@ echo "=========================================================="
 echo "📦 Creating Kubernetes Namespaces..."
 kubectl apply -f k8s/namespaces.yaml
 
-# 2. Build Docker Images
+# 2. Build Docker Images using repo root context
 echo "🔨 Building Docker Images..."
 
 echo " -> [1/5] Building WooCommerce MCP..."
-docker build -t mcp-platform/woocommerce-mcp:v1.0.0 apps/woocommerce-mcp
+docker build -f apps/woocommerce-mcp/Dockerfile -t mcp-platform/woocommerce-mcp:v1.0.0 .
 
 echo " -> [2/5] Building FakeStore MCP..."
-docker build -t mcp-platform/fakestore-mcp:v1.0.0 apps/fakestore-mcp
+docker build -f apps/fakestore-mcp/Dockerfile -t mcp-platform/fakestore-mcp:v1.0.0 .
 
 echo " -> [3/5] Building Notes MCP..."
-docker build -t mcp-platform/notes-mcp:v1.0.0 apps/notes-mcp
+docker build -f apps/notes-mcp/Dockerfile -t mcp-platform/notes-mcp:v1.0.0 .
 
 echo " -> [4/5] Building Gateway Backend (with OpenAI SDK)..."
-docker build -t mcp-platform/gateway:v1.0.15 apps/gateway
+docker build -f apps/gateway/Dockerfile -t mcp-platform/gateway:v1.0.15 .
 
-echo " -> [5/5] Building Dashboard Frontend..."
-docker build -t mcp-platform/dashboard:v1.0.24 apps/dashboard
+echo " -> [5/5] Building Dashboard Frontend (Multi-stage build)..."
+docker build -f apps/dashboard/Dockerfile -t mcp-platform/dashboard:v1.0.24 .
 
 # 3. Import images into K3s containerd
 echo "🚚 Importing Images into K3s containerd..."
-docker save mcp-platform/woocommerce-mcp:v1.0.0 | sudo k3s ctr images import -
-docker save mcp-platform/fakestore-mcp:v1.0.0 | sudo k3s ctr images import -
-docker save mcp-platform/notes-mcp:v1.0.0 | sudo k3s ctr images import -
-docker save mcp-platform/gateway:v1.0.15 | sudo k3s ctr images import -
-docker save mcp-platform/dashboard:v1.0.24 | sudo k3s ctr images import -
+docker save mcp-platform/woocommerce-mcp:v1.0.0 | k3s ctr images import -
+docker save mcp-platform/fakestore-mcp:v1.0.0 | k3s ctr images import -
+docker save mcp-platform/notes-mcp:v1.0.0 | k3s ctr images import -
+docker save mcp-platform/gateway:v1.0.15 | k3s ctr images import -
+docker save mcp-platform/dashboard:v1.0.24 | k3s ctr images import -
 
 # 4. Deploy Helm Charts using values-aws.yaml
 echo "⚓ Deploying Helm Charts..."
