@@ -1,0 +1,171 @@
+# ==============================================================================
+# Helm Environment Values — AWS EC2 Deployment (k3s single node cluster)
+# Server Public IP: 13.232.229.227
+# ==============================================================================
+
+global:
+  environment: production
+  domainSuffix: 13.232.229.227.nip.io
+  tls:
+    enabled: false
+    clusterIssuer: ""
+
+# 1. Gateway & Dashboard Configuration (helm/charts/gateway)
+gateway:
+  image:
+    repository: mcp-platform/gateway
+    tag: v1.0.15
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 3000
+  env:
+    jwtSecret: "super-secure-prod-jwt-secret-mcp-gateway-aws-2026"
+    encryptionKey: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    woocommerceMcpToken: "mcp_internal_bearer_token_secret_9988"
+    adminEmail: "admin@mcp-platform.local"
+    adminPassword: "AdminPass123!"
+    openaiModel: "gpt-6-luna"
+    openaiApiKey: ""
+    geminiApiKey: ""
+    groqApiKey: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+dashboard:
+  image:
+    repository: mcp-platform/dashboard
+    tag: v1.0.24
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+postgres:
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  db:
+    name: mcpgateway
+    user: mcpuser
+    password: mcppassword123
+  persistence:
+    size: 5Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 150m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+gatewayIngress:
+  enabled: true
+  host: dashboard.13.232.229.227.nip.io
+  tls:
+    enabled: false
+
+# 2. WooCommerce Store & Custom MCP Server (helm/charts/woocommerce-store)
+mariadb:
+  image:
+    repository: mariadb
+    tag: "11.4"
+    pullPolicy: IfNotPresent
+  auth:
+    database: wordpress
+    username: wp_user
+    password: wp_secure_password_123
+    rootPassword: mariadb_root_password_123
+  persistence:
+    size: 5Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 150m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+
+wordpress:
+  image:
+    repository: wordpress
+    tag: "6.5-apache"
+    pullPolicy: IfNotPresent
+  host: store.13.232.229.227.nip.io
+  title: "Urumi WooCommerce Store"
+  adminUser: admin
+  adminPassword: AdminSecurePassword123!
+  adminEmail: admin@example.com
+  persistence:
+    size: 10Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 200m
+      memory: 384Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+
+woocommerce:
+  consumerKey: "ck_9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+  consumerSecret: "cs_1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"
+  mcpInternalToken: "mcp_internal_bearer_token_secret_9988"
+
+woocommerceMcp:
+  image:
+    repository: mcp-platform/woocommerce-mcp
+    tag: v1.0.0
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# 3. Secondary MCP Servers (helm/charts/extra-mcps)
+fakestore:
+  image:
+    repository: mcp-platform/fakestore-mcp
+    tag: v1.0.0
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 3000
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+notes:
+  image:
+    repository: mcp-platform/notes-mcp
+    tag: v1.0.0
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 3000
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
