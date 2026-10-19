@@ -3,7 +3,8 @@ import { prisma } from '../db.js';
 import { requireUserAuth, requireAdmin } from '../middleware/auth.js';
 import { upstreamManager } from '../mcp/upstream.js';
 import { recordAuditLog } from '../services/audit.js';
-import { aiRouter } from '../services/aiRouter.js';
+import OpenAI from 'openai';
+import { aiRouter, createOpenAIClient } from '../services/aiRouter.js';
 
 const router = Router();
 
@@ -426,6 +427,7 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
     ...messages,
   ];
 
+  const aiClient = createOpenAIClient(executionConfig);
   let rounds = 0;
   const maxRounds = executionConfig.supportsTools ? 5 : 1;
   const recordedActivities: any[] = [];
@@ -450,50 +452,46 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
       });
       const roundStart = Date.now();
 
-      const response = await fetch(`${executionConfig.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${executionConfig.apiKey}`,
-        },
-        body: JSON.stringify({
+      let response: OpenAI.Chat.Completions.ChatCompletion;
+      try {
+        response = await aiClient.chat.completions.create({
           model: executionConfig.model,
-          messages: conversation,
-          tools: openAiTools.length > 0 ? openAiTools : undefined,
+          messages: conversation as any,
+          tools: openAiTools.length > 0 ? (openAiTools as any) : undefined,
           tool_choice: openAiTools.length > 0 ? 'auto' : undefined,
           // GPT-6 Luna / reasoning models require reasoning_effort: "none" when using function tools in /v1/chat/completions
           ...(executionConfig.providerName === 'openai' && openAiTools.length > 0
-            ? { reasoning_effort: 'none' }
+            ? ({ reasoning_effort: 'none' } as any)
             : {}),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
+        });
+      } catch (err: any) {
+        const errorText = err.message || 'LLM execution failed';
+        const statusCode = err.status || 502;
         sendEvent('activity_updated', {
           id: roundId,
           status: 'failed',
-          label: `LLM reasoning failed (${response.status})`,
+          label: `LLM reasoning failed (${statusCode})`,
           error: errorText,
           durationMs: Date.now() - roundStart,
         });
 
         if (isStream) {
-          sendEvent('execution_failed', { error: `Upstream LLM error (${response.status}): ${errorText}` });
+          sendEvent('execution_failed', { error: `Upstream LLM error (${statusCode}): ${errorText}` });
           res.end();
         } else {
-          res.status(502).json({ error: `Upstream LLM error (${response.status}): ${errorText}` });
+          res.status(statusCode >= 400 && statusCode < 600 ? statusCode : 502).json({
+            error: `Upstream LLM error (${statusCode}): ${errorText}`,
+          });
         }
         return;
       }
 
-      const data = (await response.json()) as any;
-      if (data.usage) {
-        promptTokensTotal += data.usage.prompt_tokens || 0;
-        completionTokensTotal += data.usage.completion_tokens || 0;
+      if (response.usage) {
+        promptTokensTotal += response.usage.prompt_tokens || 0;
+        completionTokensTotal += response.usage.completion_tokens || 0;
       }
 
-      const choice = data.choices?.[0];
+      const choice = response.choices?.[0];
       if (!choice) {
         if (isStream) {
           sendEvent('execution_failed', { error: 'Empty response from LLM' });
@@ -505,13 +503,14 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
       }
 
       const assistantMessage = choice.message;
-      conversation.push(assistantMessage);
+      conversation.push(assistantMessage as any);
 
-      const hasTools = assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0;
+      const toolCalls = assistantMessage.tool_calls || [];
+      const hasTools = toolCalls.length > 0;
       sendEvent('activity_updated', {
         id: roundId,
         status: 'completed',
-        label: hasTools ? `Selected ${assistantMessage.tool_calls.length} tool(s) to execute` : 'Reasoning completed',
+        label: hasTools ? `Selected ${toolCalls.length} tool(s) to execute` : 'Reasoning completed',
         durationMs: Date.now() - roundStart,
       });
 
@@ -634,7 +633,8 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
       }
 
       // Execute tools requested by LLM
-      for (const toolCall of assistantMessage.tool_calls) {
+      for (const toolCall of toolCalls) {
+        if (toolCall.type !== 'function') continue;
         if (isAborted) {
           sendEvent('execution_cancelled', { timestamp: Date.now() });
           return;

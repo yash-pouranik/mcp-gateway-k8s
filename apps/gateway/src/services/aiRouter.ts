@@ -134,3 +134,18 @@ class AIRouter {
 }
 
 export const aiRouter = new AIRouter();
+
+import OpenAI from 'openai';
+
+/**
+ * Instantiates an official OpenAI SDK client instance configured with
+ * dynamic multi-provider routing (OpenAI, Gemini, Groq, Ollama) and automatic retries.
+ */
+export function createOpenAIClient(config: ProviderExecutionConfig): OpenAI {
+  return new OpenAI({
+    apiKey: config.apiKey,
+    baseURL: config.baseUrl,
+    maxRetries: 3,
+    timeout: 45000,
+  });
+}
