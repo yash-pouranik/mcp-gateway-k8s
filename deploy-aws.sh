@@ -59,7 +59,11 @@ helm upgrade --install gateway helm/charts/gateway \
   -f helm/values-aws.yaml \
   -n gateway
 
+# 5. Initialize WooCommerce inside the live WordPress container
+echo "🛠️ Initializing WooCommerce Storefront..."
+bash init-woocommerce.sh
+
 echo "=========================================================="
-echo "✅ Deployment submitted! Checking pods status..."
+echo "✅ All components deployed successfully! Pod status:"
 echo "=========================================================="
 kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml get pods -A
