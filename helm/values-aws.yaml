@@ -71,11 +71,9 @@ postgres:
       cpu: 500m
       memory: 512Mi
 
-gatewayIngress:
+ingress:
   enabled: true
   host: dashboard.13.232.229.227.nip.io
-  tls:
-    enabled: false
 
 # 2. WooCommerce Store & Custom MCP Server (helm/charts/woocommerce-store)
 mariadb:
