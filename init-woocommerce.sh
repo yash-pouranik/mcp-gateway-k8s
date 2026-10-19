@@ -17,7 +17,7 @@ kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- chmod +x wp-
 echo "🚀 Checking/Installing WordPress core..."
 kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.phar core install \
   --path=/var/www/html \
-  --url="http://store.13.232.229.227.nip.io" \
+  --url="http://store.urbackend.in" \
   --title="Urumi WooCommerce Store" \
   --admin_user="admin" \
   --admin_password="AdminSecurePassword123!" \

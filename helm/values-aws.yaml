@@ -5,7 +5,7 @@
 
 global:
   environment: production
-  domainSuffix: 13.232.229.227.nip.io
+  domainSuffix: urbackend.in
   tls:
     enabled: false
     clusterIssuer: ""
@@ -73,7 +73,7 @@ postgres:
 
 ingress:
   enabled: true
-  host: dashboard.13.232.229.227.nip.io
+  host: vynn.urbackend.in
 
 # 2. WooCommerce Store & Custom MCP Server (helm/charts/woocommerce-store)
 mariadb:
@@ -102,7 +102,7 @@ wordpress:
     repository: wordpress
     tag: "6.5-apache"
     pullPolicy: IfNotPresent
-  host: store.13.232.229.227.nip.io
+  host: store.urbackend.in
   title: "Urumi WooCommerce Store"
   adminUser: admin
   adminPassword: AdminSecurePassword123!
