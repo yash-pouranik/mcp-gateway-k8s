@@ -658,6 +658,42 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
         const callId = toolCall.id || `call-${Date.now()}`;
         const sanitizedArgs = sanitizeInput(args);
 
+        // Granular RBAC: Strictly block non-admin users from executing mutating tools in chat
+        if (userRole !== 'admin' && isRestrictedTool(toolName)) {
+          const errorMsg = `Permission Denied: Tool '${toolName}' requires admin privileges. User role '${userRole}' cannot modify store or notes.`;
+
+          await recordAuditLog({
+            userId: req.user?.id || null,
+            serverId: null,
+            toolName,
+            inputSummary: {
+              parameters: sanitizedArgs,
+              source: 'dashboard_chat_agent',
+              rejectionReason: 'RBAC_PERMISSION_DENIED',
+            },
+            durationMs: 5,
+            success: false,
+            errorMsg,
+          });
+
+          sendEvent('tool_call_completed', {
+            id: callId,
+            tool: toolName,
+            cleanTool,
+            status: 'failed',
+            error: errorMsg,
+            durationMs: 5,
+          });
+
+          conversation.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            name: toolName,
+            content: `ERROR: 403 Forbidden. You do not have permission to execute '${toolName}'. This action requires the Administrator role. Politely inform the user that their current account role ('${userRole}') does not permit adding, modifying, or deleting store items or notes.`,
+          });
+          continue;
+        }
+
         sendEvent('tool_call_started', {
           id: callId,
           tool: toolName,
