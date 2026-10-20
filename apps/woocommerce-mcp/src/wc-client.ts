@@ -66,22 +66,13 @@ export class WooCommerceClient {
   }
 
   // 2. Create Product
-  async createProduct(data: {
-    name: string;
-    regular_price: string;
-    description?: string;
-    short_description?: string;
-    status?: 'publish' | 'draft' | 'pending';
-  }): Promise<any> {
+  async createProduct(data: Record<string, any>): Promise<any> {
     return this.request<any>('/products', {
       method: 'POST',
       body: JSON.stringify({
-        name: data.name,
-        type: 'simple',
-        regular_price: data.regular_price,
-        description: data.description || '',
-        short_description: data.short_description || '',
-        status: data.status || 'publish'
+        type: data.type || 'simple',
+        status: data.status || 'publish',
+        ...data
       })
     });
   }
@@ -138,6 +129,24 @@ export class WooCommerceClient {
 
     const qs = query.toString() ? `?${query.toString()}` : '';
     return this.request<any[]>(`/customers${qs}`);
+  }
+
+  // 10. List Product Categories
+  async listCategories(): Promise<any[]> {
+    return this.request<any[]>('/products/categories?per_page=50');
+  }
+
+  // 11. Create Product Category
+  async createCategory(data: { name: string; description?: string; slug?: string }): Promise<any> {
+    return this.request<any>('/products/categories', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  // 12. List Product Tags
+  async listTags(): Promise<any[]> {
+    return this.request<any[]>('/products/tags?per_page=50');
   }
 }
 

@@ -16,7 +16,7 @@ kubectl apply -f k8s/namespaces.yaml
 echo "🔨 Building Docker Images..."
 
 echo " -> [1/5] Building WooCommerce MCP..."
-docker build -f apps/woocommerce-mcp/Dockerfile -t mcp-platform/woocommerce-mcp:v1.0.1 .
+docker build -f apps/woocommerce-mcp/Dockerfile -t mcp-platform/woocommerce-mcp:v1.0.2 .
 
 echo " -> [2/5] Building FakeStore MCP..."
 docker build -f apps/fakestore-mcp/Dockerfile -t mcp-platform/fakestore-mcp:v1.0.0 .
@@ -32,7 +32,7 @@ docker build -f apps/dashboard/Dockerfile -t mcp-platform/dashboard:v1.0.24 .
 
 # 3. Import images into K3s containerd
 echo "🚚 Importing Images into K3s containerd..."
-docker save mcp-platform/woocommerce-mcp:v1.0.1 | k3s ctr images import -
+docker save mcp-platform/woocommerce-mcp:v1.0.2 | k3s ctr images import -
 docker save mcp-platform/fakestore-mcp:v1.0.0 | k3s ctr images import -
 docker save mcp-platform/notes-mcp:v1.0.1 | k3s ctr images import -
 docker save mcp-platform/gateway:v1.0.16 | k3s ctr images import -
