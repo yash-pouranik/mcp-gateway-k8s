@@ -14,7 +14,7 @@ global:
 gateway:
   image:
     repository: mcp-platform/gateway
-    tag: v1.0.15
+    tag: v1.0.16
     pullPolicy: IfNotPresent
   replicas: 1
   port: 3000
@@ -126,7 +126,7 @@ woocommerce:
 woocommerceMcp:
   image:
     repository: mcp-platform/woocommerce-mcp
-    tag: v1.0.0
+    tag: v1.0.1
     pullPolicy: IfNotPresent
   replicas: 1
   resources:
@@ -156,7 +156,7 @@ fakestore:
 notes:
   image:
     repository: mcp-platform/notes-mcp
-    tag: v1.0.0
+    tag: v1.0.1
     pullPolicy: IfNotPresent
   replicas: 1
   port: 3000
