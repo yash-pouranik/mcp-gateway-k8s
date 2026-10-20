@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, McpServer, McpTool, User } from '../api';
-import { RefreshCw, Plus, Wrench, Edit3, X, Check, ShieldAlert } from 'lucide-react';
+import { RefreshCw, Plus, Wrench, Edit3, X, Check, ShieldAlert, Trash2 } from 'lucide-react';
 
 interface ServersViewProps {
   user?: User;
@@ -76,6 +76,18 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
       setTools([]);
     } finally {
       setToolsLoading(false);
+    }
+  };
+
+  const handleDeleteServer = async (server: McpServer) => {
+    if (!window.confirm(`Are you sure you want to remove upstream server "${server.name}" (${server.slug})? Tools from this server will be immediately deregistered.`)) {
+      return;
+    }
+    try {
+      await api.deleteServer(server.id);
+      setServers((prev) => prev.filter((s) => s.id !== server.id));
+    } catch (err: any) {
+      alert(`Error deleting server: ${err.message}`);
     }
   };
 
@@ -248,14 +260,23 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
                     </button>
 
                     {user?.role === 'admin' && (
-                    <button
-                      onClick={() => openEditModal(server)}
-                      className="text-xs font-medium text-zinc-300 hover:text-white flex items-center space-x-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-2.5 py-1.5 rounded-lg transition"
-                      title="Edit server configuration"
-                    >
-                      <Edit3 className="w-3 h-3 text-zinc-400" />
-                      <span>Edit</span>
-                    </button>
+                      <>
+                        <button
+                          onClick={() => openEditModal(server)}
+                          className="text-xs font-medium text-zinc-300 hover:text-white flex items-center space-x-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-2.5 py-1.5 rounded-lg transition"
+                          title="Edit server configuration"
+                        >
+                          <Edit3 className="w-3 h-3 text-zinc-400" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteServer(server)}
+                          className="text-xs font-medium text-zinc-400 hover:text-rose-400 flex items-center space-x-1 bg-zinc-900 hover:bg-rose-950/40 border border-zinc-800 hover:border-rose-500/40 p-1.5 rounded-lg transition"
+                          title="Delete server from gateway"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
                     )}
                   </div>
 

@@ -242,6 +242,17 @@ export const api = {
     return res.json();
   },
 
+  async deleteServer(id: string): Promise<void> {
+    const res = await fetch(`/api/servers/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to delete server');
+    }
+  },
+
   async getServerTools(id: string): Promise<{ tools: McpTool[] }> {
     const res = await fetch(`/api/servers/${id}/tools`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to load server tools');
@@ -473,7 +484,7 @@ export interface MetricsSummaryResponse {
     status: 'connected' | 'unreachable' | 'disabled';
     enabled: boolean;
     totalCalls: number;
-    successRate: number;
+    successRate: number | null;
     averageLatencyMs: number;
     recentFailures: number;
   }>;

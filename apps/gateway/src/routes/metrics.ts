@@ -106,7 +106,7 @@ router.get('/summary', requireUserAuth, async (req: Request, res: Response): Pro
     const upstreamsHealth = servers.map((s) => {
       const stats = serverStatsMap[s.id] || { total: 0, success: 0, failed: 0, totalDuration: 0 };
       const avgLat = stats.total > 0 ? Math.round(stats.totalDuration / stats.total) : 0;
-      const sRate = stats.total > 0 ? Number(((stats.success / stats.total) * 100).toFixed(1)) : 100;
+      const sRate = stats.total > 0 ? Number(((stats.success / stats.total) * 100).toFixed(1)) : null;
 
       return {
         id: s.id,

@@ -347,11 +347,23 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({ user: _use
                   </div>
                   <div>
                     <div className="text-[10px] text-zinc-400 uppercase font-mono">Success</div>
-                    <div className="text-sm font-bold font-mono text-emerald-400 mt-0.5">{server.successRate}%</div>
+                    <div
+                      className={`text-sm font-bold font-mono mt-0.5 ${
+                        server.totalCalls === 0
+                          ? 'text-zinc-500'
+                          : (server.successRate || 0) < 95
+                          ? 'text-rose-400'
+                          : 'text-emerald-400'
+                      }`}
+                    >
+                      {server.totalCalls > 0 && server.successRate !== null ? `${server.successRate}%` : '—'}
+                    </div>
                   </div>
                   <div>
                     <div className="text-[10px] text-zinc-400 uppercase font-mono">Avg Lat</div>
-                    <div className="text-sm font-bold font-mono text-cf-orange mt-0.5">{server.averageLatencyMs}ms</div>
+                    <div className="text-sm font-bold font-mono text-cf-orange mt-0.5">
+                      {server.totalCalls > 0 ? `${server.averageLatencyMs}ms` : '—'}
+                    </div>
                   </div>
                 </div>
 
