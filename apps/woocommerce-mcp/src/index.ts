@@ -587,6 +587,21 @@ export async function executeTool(name: string, args: Record<string, any> = {}) 
         updatedProduct = await wcClient.getProduct(product_id);
       }
 
+      // Verify if images were requested but WordPress failed to import them
+      if (payload.images && payload.images.length > 0) {
+        const hasImagesSaved = Array.isArray(updatedProduct.images) && updatedProduct.images.length > 0;
+        if (!hasImagesSaved) {
+          const imgIndex = fieldsUpdated.indexOf('images');
+          if (imgIndex !== -1) {
+            fieldsUpdated.splice(imgIndex, 1);
+          }
+          fieldsRejected.push({
+            field: 'images',
+            reason: "WordPress failed to download image from the provided URL. WooCommerce requires a direct public image URL ending in a valid extension (.jpg, .jpeg, .png, .webp). Google image search thumbnails (e.g. 'encrypted-tbn0.gstatic.com/images?q=...') lack file extensions and block server-side downloads."
+          });
+        }
+      }
+
       const responsePayload = {
         success: true,
         product_id: Number(product_id),
