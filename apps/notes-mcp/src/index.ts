@@ -263,19 +263,34 @@ app.post('/mcp', authMiddleware, async (req: Request, res: Response) => {
 
   const { method, params, id } = jsonRpcMessage;
 
+  const requestedVersion =
+    (req.headers['mcp-protocol-version'] as string) ||
+    jsonRpcMessage._meta?.['io.modelcontextprotocol/protocolVersion'] ||
+    params?.protocolVersion ||
+    '2026-07-28';
+
+  res.setHeader('MCP-Protocol-Version', String(requestedVersion));
+
   try {
     let result: any;
     if (method === 'initialize') {
       result = {
-        protocolVersion: '2024-11-05',
+        protocolVersion: requestedVersion,
         capabilities: { tools: {} },
-        serverInfo: { name: 'notes-mcp', version: '1.0.0' }
+        serverInfo: { name: 'notes-mcp', version: '2.0.0' }
+      };
+    } else if (method === 'server/discover') {
+      result = {
+        protocolVersion: '2026-07-28',
+        supportedProtocolVersions: ['2026-07-28', '2025-11-25', '2025-06-18', '2024-11-05'],
+        serverInfo: { name: 'notes-mcp', version: '2.0.0' },
+        capabilities: { tools: {} }
       };
     } else if (method === 'notifications/initialized') {
       res.status(204).end();
       return;
     } else if (method === 'tools/list') {
-      result = { tools: TOOLS };
+      result = { tools: TOOLS, ttlMs: 60000 };
     } else if (method === 'tools/call') {
       result = await executeTool(params?.name, params?.arguments || {});
     } else if (method === 'ping') {

@@ -53,14 +53,29 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
   const userId = user?.id || null;
   const userRole = user?.role || 'member';
 
+  const requestedVersion =
+    (req.headers['mcp-protocol-version'] as string) ||
+    jsonRpcMessage._meta?.['io.modelcontextprotocol/protocolVersion'] ||
+    params?.protocolVersion ||
+    '2026-07-28';
+
+  res.setHeader('MCP-Protocol-Version', String(requestedVersion));
+
   try {
     let result: any;
 
     if (method === 'initialize') {
       result = {
-        protocolVersion: '2024-11-05',
-        capabilities: { tools: {} },
-        serverInfo: { name: 'mcp-gateway-hub', version: '1.0.0' },
+        protocolVersion: requestedVersion,
+        capabilities: { tools: { listChanged: true } },
+        serverInfo: { name: 'mcp-gateway-hub', version: '2.0.0' },
+      };
+    } else if (method === 'server/discover') {
+      result = {
+        protocolVersion: '2026-07-28',
+        supportedProtocolVersions: ['2026-07-28', '2025-11-25', '2025-06-18', '2024-11-05'],
+        serverInfo: { name: 'mcp-gateway-hub', version: '2.0.0' },
+        capabilities: { tools: { listChanged: true } },
       };
     } else if (method === 'notifications/initialized') {
       res.status(204).end();
@@ -79,6 +94,7 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
           description: t.description,
           inputSchema: t.inputSchema || { type: 'object', properties: {} },
         })),
+        ttlMs: 60000,
       };
     } else if (method === 'tools/call') {
       const startTime = Date.now();
