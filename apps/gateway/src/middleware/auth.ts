@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../db.js';
 import { hashApiKey } from '../services/crypto.js';
 import { recordAuditLog } from '../services/audit.js';
+import { recordAuthFailure } from '../services/metrics.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key-for-mcp-gateway';
 
@@ -114,6 +115,7 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
   const token = extractBearerToken(req);
 
   if (!token) {
+    recordAuthFailure('missing_auth');
     // Log unauthenticated attempt
     await recordAuditLog({
       userId: null,
@@ -136,6 +138,7 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
 
   if (apiKey) {
     if (apiKey.revokedAt !== null) {
+      recordAuthFailure('revoked_key');
       await recordAuditLog({
         userId: apiKey.userId,
         toolName: 'mcp.authenticate',
@@ -171,6 +174,7 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
       });
 
       if (!user) {
+        recordAuthFailure('invalid_jwt');
         res.status(401).json({ error: 'User no longer exists' });
         return;
       }
@@ -179,6 +183,7 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
       next();
       return;
     } catch (err) {
+      recordAuthFailure('invalid_jwt');
       await recordAuditLog({
         userId: null,
         toolName: 'mcp.authenticate',
@@ -193,6 +198,7 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
   }
 
   // 3. Otherwise, it is an invalid API key
+  recordAuthFailure('invalid_key');
   await recordAuditLog({
     userId: null,
     toolName: 'mcp.authenticate',

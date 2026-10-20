@@ -1,5 +1,6 @@
 import { prisma } from '../db.js';
 import { upstreamManager } from '../mcp/upstream.js';
+import { updateUpstreamStatusMetric } from './metrics.js';
 
 let intervalTimer: NodeJS.Timeout | null = null;
 
@@ -17,6 +18,7 @@ export function startHealthMonitor(intervalMs = 30000): void {
               data: { status: 'disabled' },
             });
           }
+          updateUpstreamStatusMetric(server.slug, 'disabled');
           continue;
         }
 
@@ -29,6 +31,7 @@ export function startHealthMonitor(intervalMs = 30000): void {
             data: { status: targetStatus },
           });
         }
+        updateUpstreamStatusMetric(server.slug, targetStatus);
       }
     } catch (err) {
       console.error('Error in health check worker:', err);

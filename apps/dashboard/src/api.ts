@@ -440,4 +440,64 @@ export const api = {
     if (!res.ok) throw new Error('Failed to load chat usage analytics');
     return res.json();
   },
+
+  async getMetricsSummary(window = '24h'): Promise<MetricsSummaryResponse> {
+    const res = await fetch(`/api/metrics/summary?window=${window}`, { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Failed to load observability metrics summary');
+    return res.json();
+  },
 };
+
+export interface MetricsSummaryResponse {
+  reportingWindow: string;
+  since: string;
+  generatedAt: string;
+  historicalMetrics: {
+    totalCalls: number;
+    successCalls: number;
+    errorCalls: number;
+    errorRatePercentage: number;
+    sampleCount: number;
+    latencyMs: {
+      average: number;
+      p50: number;
+      p90: number;
+      p95: number;
+      p99: number;
+    };
+  };
+  upstreams: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    status: 'connected' | 'unreachable' | 'disabled';
+    enabled: boolean;
+    totalCalls: number;
+    successRate: number;
+    averageLatencyMs: number;
+    recentFailures: number;
+  }>;
+  tools: Array<{
+    toolName: string;
+    serverSlug: string;
+    callCount: number;
+    avgDurationMs: number;
+  }>;
+  recentFailures: Array<{
+    id: string;
+    calledAt: string;
+    toolName: string;
+    serverSlug: string;
+    serverName: string;
+    durationMs: number;
+    errorMsg: string;
+    userId: string | null;
+  }>;
+  processMetrics: {
+    activeRequests: number;
+    processLifetimeToolCalls: number;
+    processLifetimeTimeouts: number;
+    processLifetimeAuthFailures: number;
+    uptimeSeconds: number;
+  };
+}

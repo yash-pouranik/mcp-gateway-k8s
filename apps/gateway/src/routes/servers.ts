@@ -4,6 +4,7 @@ import { requireUserAuth, requireAdmin } from '../middleware/auth.js';
 import { encryptCredential } from '../services/crypto.js';
 import { validateServerUrl } from '../services/ssrf.js';
 import { upstreamManager } from '../mcp/upstream.js';
+import { updateUpstreamStatusMetric } from '../services/metrics.js';
 
 const router = Router();
 
@@ -82,6 +83,7 @@ router.post('/', requireUserAuth, requireAdmin, async (req: Request, res: Respon
     },
   });
 
+  updateUpstreamStatusMetric(server.slug, 'connected');
   res.status(201).json({ server });
 });
 
@@ -116,6 +118,7 @@ router.patch('/:id/toggle', requireUserAuth, requireAdmin, async (req: Request, 
     },
   });
 
+  updateUpstreamStatusMetric(updated.slug, updatedStatus);
   res.json({ server: updated });
 });
 
@@ -130,6 +133,7 @@ router.delete('/:id', requireUserAuth, requireAdmin, async (req: Request, res: R
   }
 
   await prisma.mcpServer.delete({ where: { id } });
+  updateUpstreamStatusMetric(server.slug, 'disabled');
 
   res.json({ message: 'Server deleted successfully' });
 });

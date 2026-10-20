@@ -1,11 +1,11 @@
 import React from 'react';
 import { User } from '../api';
-import { LogOut, Server, Key, Terminal, Cpu, Zap, Users } from 'lucide-react';
+import { LogOut, Server, Key, Terminal, Cpu, Zap, Users, Activity } from 'lucide-react';
 
 interface NavbarProps {
   user: User;
-  currentTab: 'servers' | 'keys' | 'audit' | 'chat' | 'members';
-  onTabChange: (tab: 'servers' | 'keys' | 'audit' | 'chat' | 'members') => void;
+  currentTab: 'servers' | 'keys' | 'audit' | 'chat' | 'members' | 'observability';
+  onTabChange: (tab: 'servers' | 'keys' | 'audit' | 'chat' | 'members' | 'observability') => void;
   onLogout: () => void;
 }
 
@@ -19,6 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'servers', label: 'Upstream MCP', icon: Server, adminOnly: false },
     { id: 'keys', label: 'API Keys', icon: Key, adminOnly: false },
     { id: 'audit', label: 'Audit Trail', icon: Terminal, adminOnly: false },
+    { id: 'observability', label: 'Metrics', icon: Activity, adminOnly: false },
     { id: 'chat', label: 'VYNN Agent', icon: Cpu, adminOnly: false },
     { id: 'members', label: 'Team', icon: Users, adminOnly: true },
   ] as const;

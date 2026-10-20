@@ -14,7 +14,7 @@ global:
 gateway:
   image:
     repository: mcp-platform/gateway
-    tag: v1.0.16
+    tag: v1.0.17
     pullPolicy: IfNotPresent
   replicas: 1
   port: 3000
@@ -39,7 +39,7 @@ gateway:
 dashboard:
   image:
     repository: mcp-platform/dashboard
-    tag: v1.0.24
+    tag: v1.0.25
     pullPolicy: IfNotPresent
   replicas: 1
   port: 80

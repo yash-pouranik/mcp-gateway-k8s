@@ -7,11 +7,12 @@ import { ApiKeysView } from './components/ApiKeysView';
 import { AuditLogView } from './components/AuditLogView';
 import { ChatView } from './components/ChatView';
 import { MembersView } from './components/MembersView';
+import { ObservabilityView } from './components/ObservabilityView';
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentTab, setCurrentTab] = useState<'servers' | 'keys' | 'audit' | 'chat' | 'members'>('servers');
+  const [currentTab, setCurrentTab] = useState<'servers' | 'keys' | 'audit' | 'chat' | 'members' | 'observability'>('servers');
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -70,6 +71,7 @@ export const App: React.FC = () => {
         {currentTab === 'servers' && <ServersView user={user} />}
         {currentTab === 'keys' && <ApiKeysView user={user} />}
         {currentTab === 'audit' && <AuditLogView user={user} />}
+        {currentTab === 'observability' && <ObservabilityView user={user} onNavigateToAudit={() => setCurrentTab('audit')} />}
         {currentTab === 'chat' && <ChatView />}
         {currentTab === 'members' && <MembersView user={user} />}
       </main>

@@ -4,6 +4,7 @@ import { requireUserAuth, requireAdmin } from '../middleware/auth.js';
 import { upstreamManager } from '../mcp/upstream.js';
 import { recordAuditLog } from '../services/audit.js';
 import { isRestrictedTool } from '../mcp/server.js';
+import { trackActiveRequest, recordToolCallMetric, recordUpstreamTimeout } from '../services/metrics.js';
 import OpenAI from 'openai';
 import { aiRouter, createOpenAIClient } from '../services/aiRouter.js';
 
@@ -706,6 +707,7 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
         const startTime = Date.now();
         let targetServerId: string | null = null;
         let toolOutputString = '';
+        const endActiveRequest = trackActiveRequest();
 
         try {
           const { result, serverId } = await upstreamManager.callTool(toolName, args);
@@ -713,6 +715,13 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
           toolOutputString = JSON.stringify(result);
           const duration = Date.now() - startTime;
           const summary = generateToolOutputSummary(cleanTool, result);
+
+          recordToolCallMetric({
+            server: serverSlug,
+            tool: cleanTool,
+            durationMs: duration,
+            outcome: 'success',
+          });
 
           const toolActivity = {
             id: callId,
@@ -741,7 +750,21 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
           });
         } catch (err: any) {
           const duration = Date.now() - startTime;
-          toolOutputString = JSON.stringify({ error: err.message || 'Execution failed' });
+          const errorMsg = err.message || 'Execution failed';
+          const isTimeout = err.name === 'AbortError' || errorMsg.toLowerCase().includes('timeout');
+
+          if (isTimeout) {
+            recordUpstreamTimeout(serverSlug);
+          }
+
+          recordToolCallMetric({
+            server: serverSlug,
+            tool: cleanTool,
+            durationMs: duration,
+            outcome: isTimeout ? 'timeout' : 'failure',
+          });
+
+          toolOutputString = JSON.stringify({ error: errorMsg });
 
           const failedActivity = {
             id: callId,
@@ -749,7 +772,7 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
             cleanTool,
             server: serverSlug,
             durationMs: duration,
-            error: err.message || 'Execution failed',
+            error: errorMsg,
             status: 'failed',
           };
           recordedActivities.push(failedActivity);
@@ -766,8 +789,10 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
             },
             durationMs: duration,
             success: false,
-            errorMsg: err.message || 'Execution failed',
+            errorMsg,
           });
+        } finally {
+          endActiveRequest();
         }
 
         conversation.push({

@@ -1,6 +1,12 @@
 import { Request, Response } from 'express';
 import { upstreamManager } from './upstream.js';
 import { recordAuditLog } from '../services/audit.js';
+import {
+  trackActiveRequest,
+  recordToolCallMetric,
+  recordUpstreamTimeout,
+  recordAuthFailure,
+} from '../services/metrics.js';
 
 /**
  * Restricted tools that require 'admin' role.
@@ -76,12 +82,17 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
       };
     } else if (method === 'tools/call') {
       const startTime = Date.now();
-      const toolName = params?.name;
+      const toolName = params?.name || '';
       const toolArgs = params?.arguments || {};
       let targetServerId: string | null = null;
 
+      const sepIdx = toolName.indexOf('__');
+      const serverSlug = sepIdx !== -1 ? toolName.substring(0, sepIdx) : 'gateway';
+      const cleanTool = sepIdx !== -1 ? toolName.substring(sepIdx + 2) : toolName || 'unknown';
+
       // Granular RBAC: Enforce role-based tool restrictions
       if (userRole !== 'admin' && isRestrictedTool(toolName)) {
+        recordAuthFailure('rbac_denied');
         const errorMsg = `Permission Denied: Tool '${toolName}' requires admin privileges. User role '${userRole}' is not authorized.`;
 
         await recordAuditLog({
@@ -114,10 +125,19 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
         return;
       }
 
+      const endActiveRequest = trackActiveRequest();
       try {
         const callRes = await upstreamManager.callTool(toolName, toolArgs);
         targetServerId = callRes.serverId;
         result = callRes.result;
+        const durationMs = Date.now() - startTime;
+
+        recordToolCallMetric({
+          server: serverSlug,
+          tool: cleanTool,
+          durationMs,
+          outcome: 'success',
+        });
 
         await recordAuditLog({
           userId,
@@ -133,11 +153,25 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
             keyName: req.apiKeyName || null,
             source: req.apiKeyPrefix ? 'external_client' : 'dashboard_jwt',
           },
-          durationMs: Date.now() - startTime,
+          durationMs,
           success: true,
         });
       } catch (err: any) {
+        const durationMs = Date.now() - startTime;
         const errorMsg = err.message || 'Tool execution error';
+        const isTimeout = err.name === 'AbortError' || errorMsg.toLowerCase().includes('timeout');
+
+        if (isTimeout) {
+          recordUpstreamTimeout(serverSlug);
+        }
+
+        recordToolCallMetric({
+          server: serverSlug,
+          tool: cleanTool,
+          durationMs,
+          outcome: isTimeout ? 'timeout' : 'failure',
+        });
+
         await recordAuditLog({
           userId,
           serverId: targetServerId,
@@ -151,7 +185,7 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
             keyName: req.apiKeyName || null,
             source: req.apiKeyPrefix ? 'external_client' : 'dashboard_jwt',
           },
-          durationMs: Date.now() - startTime,
+          durationMs,
           success: false,
           errorMsg,
         });
@@ -165,6 +199,8 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
             },
           ],
         };
+      } finally {
+        endActiveRequest();
       }
     } else if (method === 'ping') {
       result = {};
