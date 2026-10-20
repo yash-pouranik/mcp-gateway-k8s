@@ -7,8 +7,8 @@ global:
   environment: production
   domainSuffix: urbackend.in
   tls:
-    enabled: false
-    clusterIssuer: ""
+    enabled: true
+    clusterIssuer: "letsencrypt-prod"
 
 # 1. Gateway & Dashboard Configuration (helm/charts/gateway)
 gateway:
@@ -71,9 +71,13 @@ postgres:
       cpu: 500m
       memory: 512Mi
 
-ingress:
+gatewayIngress:
   enabled: true
   host: vynn.urbackend.in
+  tlsSecretName: vynn-tls-cert
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 
 # 2. WooCommerce Store & Custom MCP Server (helm/charts/woocommerce-store)
 mariadb:
@@ -136,6 +140,15 @@ woocommerceMcp:
     limits:
       cpu: 500m
       memory: 512Mi
+
+storeIngress:
+  enabled: true
+  className: nginx
+  tlsSecretName: store-tls-cert
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 
 # 3. Secondary MCP Servers (helm/charts/extra-mcps)
 fakestore:

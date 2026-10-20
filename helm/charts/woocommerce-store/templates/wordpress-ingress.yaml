@@ -1,4 +1,5 @@
-{{- if .Values.ingress.enabled }}
+{{- $ingress := .Values.storeIngress | default .Values.ingress }}
+{{- if $ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -7,12 +8,15 @@ metadata:
     app.kubernetes.io/name: wordpress
     app.kubernetes.io/part-of: woocommerce-store
   annotations:
-    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+    {{- toYaml $ingress.annotations | nindent 4 }}
 spec:
-  ingressClassName: {{ .Values.ingress.className }}
+  ingressClassName: {{ $ingress.className | default "nginx" }}
   tls:
     - hosts:
         - {{ .Values.wordpress.host }}
+      {{- if $ingress.tlsSecretName }}
+      secretName: {{ $ingress.tlsSecretName }}
+      {{- end }}
   rules:
     - host: {{ .Values.wordpress.host }}
       http:
