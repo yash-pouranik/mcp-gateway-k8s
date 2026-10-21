@@ -42,6 +42,8 @@ export interface McpServer {
   enabled: boolean;
   status: 'connected' | 'unreachable' | 'disabled';
   createdAt: string;
+  tools?: McpTool[];
+  toolCount?: number;
 }
 
 export interface McpTool {

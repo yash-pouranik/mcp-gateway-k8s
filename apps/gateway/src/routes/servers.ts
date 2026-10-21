@@ -8,7 +8,7 @@ import { updateUpstreamStatusMetric } from '../services/metrics.js';
 
 const router = Router();
 
-// GET /api/servers (List all registered servers)
+// GET /api/servers (List all registered servers with their exposed tools)
 router.get('/', requireUserAuth, async (req: Request, res: Response): Promise<void> => {
   const servers = await prisma.mcpServer.findMany({
     select: {
@@ -23,7 +23,28 @@ router.get('/', requireUserAuth, async (req: Request, res: Response): Promise<vo
     },
     orderBy: { createdAt: 'asc' },
   });
-  res.json({ servers });
+
+  let aggregatedTools: any[] = [];
+  try {
+    aggregatedTools = await upstreamManager.aggregateTools();
+  } catch (_) {
+    // Non-fatal if aggregation fails
+  }
+
+  const enrichedServers = servers.map((s) => {
+    const sTools = aggregatedTools.filter((t) => t.serverId === s.id || t.serverSlug === s.slug);
+    return {
+      ...s,
+      tools: sTools.map((t) => ({
+        originalName: t.originalName,
+        gatewayName: t.gatewayName,
+        description: t.description,
+      })),
+      toolCount: sTools.length,
+    };
+  });
+
+  res.json({ servers: enrichedServers });
 });
 
 // POST /api/servers (Register new upstream server - Admin only)

@@ -146,6 +146,8 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
     }
   };
 
+  const totalToolsCount = servers.reduce((acc, s) => acc + (s.tools?.length || 0), 0);
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
@@ -155,6 +157,9 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
             <h1 className="text-xl font-bold text-white tracking-tight">Connected MCP Servers</h1>
             <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-700 text-zinc-300">
               {servers.length} upstreams
+            </span>
+            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-cf-orange/10 border border-cf-orange/30 text-cf-orange">
+              {totalToolsCount} tools aggregated
             </span>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
@@ -244,6 +249,54 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
                     <div className="text-xs font-mono text-zinc-300 truncate mt-1 flex items-center justify-between" title={server.url}>
                       <span className="truncate">{server.url}</span>
                     </div>
+                  </div>
+
+                  {/* Exposed Tools Direct List */}
+                  <div className="mt-3.5">
+                    <div className="flex items-center justify-between text-[11px] font-medium text-zinc-400 mb-1.5">
+                      <span className="flex items-center space-x-1.5">
+                        <Wrench className="w-3 h-3 text-cf-orange" />
+                        <span>Exposed Tools</span>
+                      </span>
+                      <span className="font-mono text-[10px] bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded text-zinc-300">
+                        {server.tools && server.tools.length > 0
+                          ? `${server.tools.length} live`
+                          : isDisabled || !isConnected
+                          ? '0 active'
+                          : '0 tools'}
+                      </span>
+                    </div>
+
+                    {server.tools && server.tools.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {server.tools.slice(0, 5).map((tool) => (
+                          <span
+                            key={tool.gatewayName}
+                            onClick={() => handleInspectTools(server)}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-900/90 text-zinc-300 border border-zinc-800 hover:border-cf-orange/50 hover:text-white cursor-pointer transition"
+                            title={tool.description || tool.gatewayName}
+                          >
+                            {tool.originalName}
+                          </span>
+                        ))}
+                        {server.tools.length > 5 && (
+                          <button
+                            onClick={() => handleInspectTools(server)}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-zinc-900 text-cf-orange hover:underline cursor-pointer border border-zinc-800"
+                          >
+                            +{server.tools.length - 5} more
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-zinc-500 font-mono italic">
+                        {isDisabled
+                          ? 'Server disabled — tools hidden'
+                          : !isConnected
+                          ? 'Server unreachable — tools offline'
+                          : 'No tools registered'}
+                      </div>
+                    )}
                   </div>
                 </div>
 
