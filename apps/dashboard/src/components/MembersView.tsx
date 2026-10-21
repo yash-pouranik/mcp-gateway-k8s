@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { api, TeamMember, User, UserUsageSummary, ChatSessionSummary, ChatMessageRecord } from '../api';
 import {
-  Users,
   Plus,
   Key,
   AlertCircle,
   RefreshCw,
   X,
   Mail,
-  Cpu,
-  BarChart3,
-  MessageSquare,
   ChevronRight,
   ShieldAlert,
   Loader2,
@@ -103,7 +99,7 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
         messages: data.session.messages || [],
       });
     } catch (err: any) {
-      alert(`Failed to load transcript: ${err.message}`);
+      alert(`Failed to load session messages: ${err.message}`);
     } finally {
       setInspectLoading(false);
     }
@@ -111,18 +107,13 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
 
   const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteName.trim() || !inviteEmail.trim() || !invitePassword.trim()) {
-      setModalError('All fields are required');
-      return;
-    }
-
-    setSubmitting(true);
     setModalError(null);
+    setSubmitting(true);
     try {
       await api.createMember({
         name: inviteName.trim(),
         email: inviteEmail.trim(),
-        password: invitePassword.trim(),
+        password: invitePassword,
         role: inviteRole,
       });
       setShowInviteModal(false);
@@ -139,48 +130,42 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6">
       {/* Header with Sub-Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-zinc-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-zinc-850">
         <div>
-          <div className="flex items-center space-x-2.5">
-            <h1 className="text-xl font-bold tracking-tight text-white font-sans">Team Management</h1>
-            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-cf-orange">
+          <div className="flex items-center space-x-2">
+            <h1 className="text-lg font-semibold text-white tracking-tight">Team Management</h1>
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
               {members.length} {members.length === 1 ? 'member' : 'members'}
             </span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            Manage authorized users, role permissions, and view per-member AI token usage analytics.
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Authorized users, RBAC roles, and per-member token usage telemetry.
           </p>
         </div>
 
-        <div className="flex items-center space-x-2.5">
+        <div className="flex items-center space-x-2">
           {/* Sub-Tab Switcher */}
-          <div className="flex items-center bg-zinc-900/90 p-1 rounded-xl border border-zinc-800">
+          <div className="flex items-center bg-zinc-900 p-0.5 rounded-md border border-zinc-800 text-xs">
             <button
               onClick={() => setSubTab('roster')}
-              className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium transition ${
-                subTab === 'roster'
-                  ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/60'
-                  : 'text-zinc-400 hover:text-white'
+              className={`px-2.5 py-1 rounded transition-colors ${
+                subTab === 'roster' ? 'bg-zinc-800 text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <Users className="w-3.5 h-3.5" />
-              <span>Team Roster</span>
+              Roster
             </button>
             <button
               onClick={() => {
                 setSubTab('usage');
                 loadUsage();
               }}
-              className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium transition ${
-                subTab === 'usage'
-                  ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/60'
-                  : 'text-zinc-400 hover:text-white'
+              className={`px-2.5 py-1 rounded transition-colors ${
+                subTab === 'usage' ? 'bg-zinc-800 text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <BarChart3 className="w-3.5 h-3.5 text-cf-orange" />
-              <span>Chat Usage & Tokens</span>
+              AI Usage
             </button>
           </div>
 
@@ -189,7 +174,7 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
               loadMembers();
               loadUsage();
             }}
-            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition shadow-sm"
+            className="p-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition"
             title="Refresh"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-cf-orange' : ''}`} />
@@ -201,7 +186,7 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
                 setModalError(null);
                 setShowInviteModal(true);
               }}
-              className="flex items-center space-x-2 px-3.5 py-2 bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white rounded-xl text-xs font-semibold shadow-md shadow-cf-orange/20 transition"
+              className="px-3 py-1.5 rounded-md bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center space-x-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Invite Member</span>
@@ -211,30 +196,28 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
       </div>
 
       {error && (
-        <div className="p-3.5 bg-rose-950/40 border border-rose-900/60 rounded-xl text-rose-300 text-xs flex items-center space-x-2">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+        <div className="p-3 rounded-md bg-rose-950/20 border border-rose-900/40 text-rose-300 text-xs flex items-center space-x-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* ------------------------------------------------------------- */}
-      {/* 1. Sub-Tab: Team Roster                                       */}
-      {/* ------------------------------------------------------------- */}
+      {/* 1. Sub-Tab: Team Roster */}
       {subTab === 'roster' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {members.map((member) => (
             <div
               key={member.id}
-              className="p-4 bg-zinc-950/70 border border-zinc-800/80 hover:border-zinc-700 rounded-2xl shadow-sm transition group"
+              className="p-4 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 rounded-lg transition space-y-3"
             >
               <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-semibold text-zinc-200">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-7 h-7 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-mono font-medium text-zinc-300">
                     {member.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-white tracking-tight">{member.name}</div>
-                    <div className="text-xs text-zinc-400 truncate max-w-[14rem] flex items-center space-x-1 mt-0.5">
+                    <div className="text-xs font-semibold text-white tracking-tight">{member.name}</div>
+                    <div className="text-[11px] text-zinc-400 truncate max-w-[12rem] flex items-center space-x-1 mt-0.5">
                       <Mail className="w-3 h-3 text-zinc-500" />
                       <span>{member.email}</span>
                     </div>
@@ -242,9 +225,9 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
                 </div>
 
                 <span
-                  className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                  className={`text-[10px] font-mono px-1.5 py-0.2 rounded border ${
                     member.role === 'admin'
-                      ? 'bg-cf-orange/15 text-cf-orange border-cf-orange/30'
+                      ? 'bg-cf-orange/10 text-cf-orange border-cf-orange/20'
                       : 'bg-zinc-900 text-zinc-400 border-zinc-800'
                   }`}
                 >
@@ -252,15 +235,15 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
                 </span>
               </div>
 
-              <div className="mt-4 pt-3.5 border-t border-zinc-800/60 flex items-center justify-between text-xs text-zinc-400 font-mono">
-                <div className="flex items-center space-x-1.5">
-                  <Key className="w-3.5 h-3.5 text-zinc-500" />
+              <div className="pt-2.5 border-t border-zinc-850 flex items-center justify-between text-xs text-zinc-400 font-mono">
+                <div className="flex items-center space-x-1.5 text-[11px]">
+                  <Key className="w-3 h-3 text-zinc-500" />
                   <span>{member._count?.apiKeys || 0} API Keys</span>
                 </div>
                 {user?.role === 'admin' && (
                   <button
                     onClick={() => handleOpenInspect(member)}
-                    className="text-[11px] text-cf-orange hover:text-amber-400 transition flex items-center space-x-1 font-sans font-medium"
+                    className="text-[11px] text-cf-orange hover:underline transition flex items-center space-x-1 font-sans"
                   >
                     <span>View Chats</span>
                     <ChevronRight className="w-3 h-3" />
@@ -272,116 +255,95 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
         </div>
       )}
 
-      {/* ------------------------------------------------------------- */}
-      {/* 2. Sub-Tab: AI Chat Usage & Token Analytics                  */}
-      {/* ------------------------------------------------------------- */}
+      {/* 2. Sub-Tab: AI Chat Usage & Token Analytics */}
       {subTab === 'usage' && (
-        <div className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800">
-              <div className="text-[10px] font-mono uppercase text-zinc-500">Total Tokens Consumed</div>
-              <div className="text-2xl font-bold text-white mt-1">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-zinc-800 rounded-lg overflow-hidden border border-zinc-800">
+            <div className="p-4 bg-zinc-950">
+              <div className="text-xs text-zinc-400 font-medium">Total Tokens Consumed</div>
+              <div className="text-2xl font-semibold font-mono text-white mt-1">
                 {usageSummary.reduce((acc, u) => acc + u.totalTokens, 0).toLocaleString()}
               </div>
-              <div className="text-[11px] text-zinc-400 mt-1">Across all team sessions</div>
+              <div className="text-[11px] text-zinc-500 font-mono mt-0.5">Across all team sessions</div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800">
-              <div className="text-[10px] font-mono uppercase text-zinc-500">Total AI Invocations</div>
-              <div className="text-2xl font-bold text-cf-orange mt-1">
+            <div className="p-4 bg-zinc-950">
+              <div className="text-xs text-zinc-400 font-medium">AI Invocations</div>
+              <div className="text-2xl font-semibold font-mono text-cf-orange mt-1">
                 {usageSummary.reduce((acc, u) => acc + u.requestCount, 0).toLocaleString()}
               </div>
-              <div className="text-[11px] text-zinc-400 mt-1">Autonomous reasoning rounds</div>
+              <div className="text-[11px] text-zinc-500 font-mono mt-0.5">Multi-turn tool calls</div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800">
-              <div className="text-[10px] font-mono uppercase text-zinc-500">Active AI Providers</div>
-              <div className="text-2xl font-bold text-emerald-400 mt-1">3 Active</div>
-              <div className="text-[11px] text-zinc-400 mt-1">OpenAI, Google Gemini, Grok</div>
+            <div className="p-4 bg-zinc-950">
+              <div className="text-xs text-zinc-400 font-medium">Active AI Providers</div>
+              <div className="text-2xl font-semibold font-mono text-emerald-400 mt-1">3 Active</div>
+              <div className="text-[11px] text-zinc-500 font-mono mt-0.5">OpenAI, Google Gemini, Grok</div>
             </div>
           </div>
 
-          <div className="bg-zinc-950/80 border border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-5 py-3 border-b border-zinc-800 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Cpu className="w-4 h-4 text-cf-orange" />
-                <h3 className="text-xs font-semibold text-white uppercase tracking-wider font-mono">
-                  Per-Member Usage Breakdown
-                </h3>
-              </div>
-              <span className="text-[11px] font-mono text-zinc-500">
-                Pre-aggregated daily rollups (O(1) query)
-              </span>
+          <div className="border border-zinc-800 bg-zinc-950 rounded-lg overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-zinc-800 flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-zinc-200 tracking-tight">Per-Member Usage Breakdown</h3>
+              <span className="text-[11px] font-mono text-zinc-500">Daily rollups</span>
             </div>
 
-            <table className="min-w-full divide-y divide-zinc-800">
-              <thead className="bg-zinc-900/60">
+            <table className="min-w-full text-left text-xs">
+              <thead className="bg-zinc-900/50 text-zinc-400 font-mono text-[11px] border-b border-zinc-800">
                 <tr>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                    Member
-                  </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                    Providers Breakdown
-                  </th>
-                  <th className="px-5 py-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                    Prompt Tokens
-                  </th>
-                  <th className="px-5 py-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                    Completion Tokens
-                  </th>
-                  <th className="px-5 py-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                    Total Tokens
-                  </th>
-                  <th className="px-5 py-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                    Action
-                  </th>
+                  <th className="px-4 py-2.5 font-medium">Member</th>
+                  <th className="px-4 py-2.5 font-medium">Providers Breakdown</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Prompt</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Completion</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Total Tokens</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800/60">
+              <tbody className="divide-y divide-zinc-850">
                 {usageLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-zinc-500 font-mono text-xs">
+                    <td colSpan={6} className="px-4 py-10 text-center text-zinc-500 font-mono text-xs">
                       Loading usage metrics...
                     </td>
                   </tr>
                 ) : usageSummary.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-zinc-500 text-xs">
-                      No chat tokens recorded yet. Run a conversation in VYNN Studio to track telemetry.
+                    <td colSpan={6} className="px-4 py-10 text-center text-zinc-500 text-xs font-mono">
+                      No chat tokens recorded yet.
                     </td>
                   </tr>
                 ) : (
                   usageSummary.map((item) => (
-                    <tr key={item.userId} className="hover:bg-zinc-900/40 transition">
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs">
-                        <div className="font-semibold text-white">{item.name}</div>
-                        <div className="text-[10px] font-mono text-zinc-500">{item.email}</div>
+                    <tr key={item.userId} className="hover:bg-zinc-900/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-white">{item.name}</div>
+                        <div className="text-[11px] font-mono text-zinc-500">{item.email}</div>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs font-mono">
-                        <div className="flex flex-wrap gap-1.5">
+                      <td className="px-4 py-3 font-mono">
+                        <div className="flex flex-wrap gap-1">
                           {Object.entries(item.providers).map(([prov, tokens]) => (
                             <span
                               key={prov}
-                              className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300"
+                              className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300"
                             >
-                              <strong className="text-cf-orange uppercase">{prov}:</strong> {tokens.toLocaleString()}
+                              <strong className="text-cf-orange font-normal">{prov}:</strong> {tokens.toLocaleString()}
                             </span>
                           ))}
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-right text-xs font-mono text-zinc-400">
+                      <td className="px-4 py-3 text-right font-mono text-zinc-400">
                         {item.promptTokens.toLocaleString()}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-right text-xs font-mono text-zinc-400">
+                      <td className="px-4 py-3 text-right font-mono text-zinc-400">
                         {item.completionTokens.toLocaleString()}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-right text-xs font-mono font-bold text-white">
+                      <td className="px-4 py-3 text-right font-mono font-semibold text-white">
                         {item.totalTokens.toLocaleString()}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-right text-xs">
+                      <td className="px-4 py-3 text-right">
                         <button
                           onClick={() => handleOpenInspect({ id: item.userId, name: item.name })}
-                          className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-cf-orange hover:text-white transition text-xs font-medium"
+                          className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition text-xs font-medium"
                         >
                           View Chats
                         </button>
@@ -395,64 +357,59 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
         </div>
       )}
 
-      {/* ------------------------------------------------------------- */}
-      {/* 3. Inspect Member Chats Modal                                 */}
-      {/* ------------------------------------------------------------- */}
+      {/* Inspect Member Chats Modal */}
       {inspectMember && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-150">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-lg max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl">
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <MessageSquare className="w-4 h-4 text-cf-orange" />
-                <h3 className="text-sm font-bold text-white tracking-tight">
-                  Chat History: {inspectMember.name}
-                </h3>
-              </div>
+              <h3 className="text-sm font-semibold text-white">
+                Chat History: {inspectMember.name}
+              </h3>
               <button
                 onClick={() => {
                   setInspectMember(null);
                   setSelectedInspectSession(null);
                 }}
-                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition"
+                className="p-1 rounded text-zinc-400 hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
+            <div className="p-4 overflow-y-auto flex-1 space-y-3">
               {inspectLoading ? (
                 <div className="text-center py-12 text-zinc-500 font-mono text-xs">
                   <Loader2 className="w-4 h-4 text-cf-orange animate-spin mx-auto mb-1.5" />
                   <span>Loading conversations...</span>
                 </div>
               ) : selectedInspectSession ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-zinc-800 text-xs">
                     <button
                       onClick={() => setSelectedInspectSession(null)}
-                      className="text-xs text-cf-orange hover:text-amber-400 flex items-center space-x-1"
+                      className="text-cf-orange hover:underline font-mono"
                     >
-                      <span>← Back to Sessions List</span>
+                      ← Back to Sessions
                     </button>
-                    <span className="text-xs font-mono text-zinc-400">
+                    <span className="font-mono text-zinc-400">
                       {selectedInspectSession.session.title}
                     </span>
                   </div>
 
-                  <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1">
                     {selectedInspectSession.messages.map((m) => {
                       const isUser = m.role === 'user';
                       return (
                         <div
                           key={m.id}
-                          className={`p-3 rounded-xl border text-xs leading-relaxed ${
+                          className={`p-3 rounded border text-xs leading-relaxed ${
                             isUser
-                              ? 'bg-[#222222] border-zinc-700/80 text-zinc-200'
-                              : 'bg-zinc-950 border-zinc-800 text-zinc-300'
+                              ? 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                              : 'bg-zinc-950 border-zinc-850 text-zinc-300'
                           }`}
                         >
                           <div className="flex items-center justify-between font-mono text-[10px] text-zinc-500 mb-1">
-                            <span className="font-semibold uppercase text-zinc-400">
+                            <span className="font-semibold text-zinc-400">
                               {isUser ? inspectMember.name : 'VYNN Assistant'}
                             </span>
                             <span>{new Date(m.createdAt).toLocaleTimeString()}</span>
@@ -464,19 +421,19 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
                   </div>
                 </div>
               ) : inspectSessions.length === 0 ? (
-                <div className="text-center py-12 text-zinc-500 text-xs">
+                <div className="text-center py-10 text-zinc-500 text-xs font-mono">
                   No chat sessions recorded for this member.
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {inspectSessions.map((s) => (
                     <div
                       key={s.id}
                       onClick={() => handleOpenInspectSession(s)}
-                      className="p-3 rounded-xl bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800 hover:border-cf-orange/40 cursor-pointer transition flex items-center justify-between"
+                      className="p-3 rounded bg-zinc-900/40 hover:bg-zinc-900 border border-zinc-850 hover:border-zinc-800 cursor-pointer transition flex items-center justify-between"
                     >
                       <div className="truncate pr-3">
-                        <div className="text-xs font-semibold text-white truncate">{s.title}</div>
+                        <div className="text-xs font-medium text-white truncate">{s.title}</div>
                         <div className="text-[10px] font-mono text-zinc-500 flex items-center space-x-2 mt-0.5">
                           <span>{new Date(s.updatedAt).toLocaleDateString()}</span>
                           <span>·</span>
@@ -484,13 +441,13 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
                           <span>·</span>
                           <span>{s.totalTokens} tokens</span>
                           {s.provider && (
-                            <span className="px-1.5 py-0.2 rounded bg-zinc-800 text-cf-orange uppercase">
+                            <span className="px-1 py-0.2 rounded bg-zinc-800 text-cf-orange uppercase">
                               {s.provider}
                             </span>
                           )}
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+                      <ChevronRight className="w-4 h-4 text-zinc-500 shrink-0" />
                     </div>
                   ))}
                 </div>
@@ -500,78 +457,70 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
         </div>
       )}
 
-      {/* ------------------------------------------------------------- */}
-      {/* 4. Invite Member Modal                                        */}
-      {/* ------------------------------------------------------------- */}
+      {/* Invite Member Modal */}
       {showInviteModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3.5 border-b border-zinc-800 mb-4">
-              <div className="flex items-center space-x-2">
-                <Users className="w-4 h-4 text-cf-orange" />
-                <h3 className="text-sm font-bold text-white tracking-tight">Invite Team Member</h3>
-              </div>
-              <button
-                onClick={() => setShowInviteModal(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition"
-              >
+          <div className="bg-zinc-950 border border-zinc-800 rounded-lg max-w-md w-full p-5 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <h3 className="text-sm font-semibold text-white">Invite Team Member</h3>
+              <button onClick={() => setShowInviteModal(false)} className="p-1 rounded text-zinc-400 hover:text-white">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {modalError && (
-              <div className="p-2.5 mb-4 bg-rose-950/40 border border-rose-900/60 rounded-xl text-rose-300 text-xs flex items-center space-x-2">
-                <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+              <div className="mt-3 p-2.5 bg-rose-950/20 border border-rose-900/40 rounded text-rose-300 text-xs flex items-center space-x-2">
+                <ShieldAlert className="w-4 h-4 shrink-0" />
                 <span>{modalError}</span>
               </div>
             )}
 
-            <form onSubmit={handleInviteSubmit} className="space-y-3.5">
+            <form onSubmit={handleInviteSubmit} className="mt-3 space-y-3">
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">Full Name</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">Full Name</label>
                 <input
                   type="text"
                   required
                   value={inviteName}
                   onChange={(e) => setInviteName(e.target.value)}
-                  placeholder="e.g. Sarah Connor"
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-xs focus:outline-none focus:ring-1 focus:ring-cf-orange"
+                  placeholder="e.g. Developer Bob"
+                  className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-white text-xs focus:outline-none focus:border-zinc-700"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">Email Address</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">Email Address</label>
                 <input
                   type="email"
                   required
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="e.g. sarah@example.com"
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-xs focus:outline-none focus:ring-1 focus:ring-cf-orange"
+                  placeholder="bob@mcp-platform.local"
+                  className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-white text-xs focus:outline-none focus:border-zinc-700"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">Initial Password</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">Initial Password</label>
                 <input
                   type="password"
                   required
                   value={invitePassword}
                   onChange={(e) => setInvitePassword(e.target.value)}
-                  placeholder="Strong password for login"
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-xs focus:outline-none focus:ring-1 focus:ring-cf-orange"
+                  placeholder="••••••••"
+                  className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-white text-xs focus:outline-none focus:border-zinc-700"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">Role</label>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">Role</label>
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as 'admin' | 'member')}
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-white text-xs focus:outline-none focus:ring-1 focus:ring-cf-orange font-mono"
+                  className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-white text-xs focus:outline-none focus:border-zinc-700 font-mono"
                 >
-                  <option value="member">Member (Can issue personal keys & use AI Agent)</option>
-                  <option value="admin">Administrator (Full cluster & server config control)</option>
+                  <option value="member">Member (Read tools & Personal API keys)</option>
+                  <option value="admin">Administrator (Full cluster & mutating tools)</option>
                 </select>
               </div>
 
@@ -579,14 +528,14 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
                 <button
                   type="button"
                   onClick={() => setShowInviteModal(false)}
-                  className="px-3.5 py-1.5 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-900 text-xs transition"
+                  className="px-3 py-1.5 rounded border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-900 text-xs transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-1.5 rounded-xl bg-cf-orange hover:bg-cf-hover active:bg-cf-dark disabled:opacity-40 text-white text-xs font-semibold transition"
+                  className="px-3 py-1.5 rounded bg-cf-orange hover:bg-cf-hover active:bg-cf-dark disabled:opacity-40 text-white text-xs font-medium transition"
                 >
                   {submitting ? 'Creating...' : 'Create Account'}
                 </button>

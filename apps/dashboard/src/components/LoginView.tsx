@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { api, User } from '../api';
-import { Lock, Mail, ArrowRight, UserCheck, Zap } from 'lucide-react';
+import { Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 
 interface LoginViewProps {
   onLoginSuccess: (user: User) => void;
@@ -34,30 +34,31 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-black">
-      <div className="max-w-md w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-8 shadow-2xl">
-        <div className="text-center mb-7">
-          <div className="inline-flex p-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-cf-orange mb-3.5 shadow-sm">
-            <Zap className="w-6 h-6 text-cf-orange fill-cf-orange" />
+      <div className="max-w-sm w-full bg-zinc-950 border border-zinc-800 rounded-lg p-6 shadow-2xl">
+        <div className="text-center mb-6">
+          <div className="w-10 h-10 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto mb-3">
+            <img src="/vynn_ai_logo.png" alt="VYNN" className="w-6 h-6 object-contain" />
           </div>
-          <h1 className="text-xl font-bold text-white tracking-tight">MCP Gateway Console</h1>
-          <p className="text-xs text-zinc-400 mt-1">
-            Aggregated Model Context Protocol Management & Agent Hub
+          <h1 className="text-base font-semibold text-white tracking-tight">VYNN / MCP Gateway</h1>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Sign in to access the control plane and tool registry.
           </p>
         </div>
 
         {error && (
-          <div className="mb-5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
-            {error}
+          <div className="mb-4 p-2.5 rounded bg-rose-950/20 border border-rose-900/40 text-rose-300 text-xs flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1.5">
-              Email Address
+            <label className="block text-xs font-medium text-zinc-400 mb-1">
+              Email
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500">
+              <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-zinc-500">
                 <Mail className="w-3.5 h-3.5" />
               </div>
               <input
@@ -65,18 +66,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-cf-orange text-xs"
+                className="w-full pl-8 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-700 text-xs"
                 placeholder="you@domain.com"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1.5">
+            <label className="block text-xs font-medium text-zinc-400 mb-1">
               Password
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500">
+              <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-zinc-500">
                 <Lock className="w-3.5 h-3.5" />
               </div>
               <input
@@ -84,7 +85,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-cf-orange text-xs"
+                className="w-full pl-8 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-700 text-xs"
                 placeholder="••••••••••••"
               />
             </div>
@@ -93,37 +94,36 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-2.5 px-4 rounded-xl bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center justify-center space-x-2 shadow-sm shadow-cf-orange/20 disabled:opacity-50"
+            className="w-full mt-2 py-2 px-3 rounded bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center justify-center space-x-1.5 disabled:opacity-50"
           >
-            <span>{loading ? 'Authenticating...' : 'Sign In to Gateway'}</span>
+            <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-zinc-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-2.5 flex items-center space-x-1.5">
-            <UserCheck className="w-3 h-3 text-cf-orange" />
-            <span>Quick Fill Test Accounts</span>
+        <div className="mt-6 pt-4 border-t border-zinc-850">
+          <div className="text-[10px] text-zinc-500 font-mono mb-2">
+            Demo Credentials
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             <button
               type="button"
               onClick={() => handleQuickFill('admin@mcp-platform.local', 'AdminPass123!')}
-              className="py-1.5 px-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-[11px] font-medium text-cf-orange transition text-center"
+              className="py-1 px-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-[11px] font-mono text-zinc-300 transition text-center"
             >
               Admin
             </button>
             <button
               type="button"
               onClick={() => handleQuickFill('member_a@mcp-platform.local', 'MemberPass123!')}
-              className="py-1.5 px-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-[11px] font-medium text-zinc-300 transition text-center"
+              className="py-1 px-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-[11px] font-mono text-zinc-400 transition text-center"
             >
               Alice (A)
             </button>
             <button
               type="button"
               onClick={() => handleQuickFill('member_b@mcp-platform.local', 'MemberPass123!')}
-              className="py-1.5 px-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg text-[11px] font-medium text-zinc-300 transition text-center"
+              className="py-1 px-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-[11px] font-mono text-zinc-400 transition text-center"
             >
               Bob (B)
             </button>

@@ -1,19 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api, MetricsSummaryResponse, User } from '../api';
 import {
-  Activity,
-  Clock,
-  AlertTriangle,
-  Server,
-  CheckCircle2,
-  XCircle,
   RefreshCw,
-  Zap,
-  BarChart2,
-  TrendingUp,
-  Radio,
   ArrowUpRight,
-  ShieldAlert,
+  ChevronDown,
+  ChevronRight,
+  Radio,
+  AlertCircle,
+  CheckCircle,
 } from 'lucide-react';
 
 interface ObservabilityViewProps {
@@ -29,6 +23,7 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({ user: _use
   const [timeWindow, setTimeWindow] = useState<'1h' | '24h' | '7d'>('24h');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>('');
+  const [expandedFailureId, setExpandedFailureId] = useState<string | null>(null);
 
   const fetchMetrics = useCallback(
     async (isBackground = false) => {
@@ -65,14 +60,14 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({ user: _use
 
   if (loading && !data) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-10 bg-zinc-900 rounded-xl w-1/3"></div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="space-y-4">
+        <div className="h-6 bg-zinc-900 rounded w-48 animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-zinc-850 rounded-lg overflow-hidden border border-zinc-850">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-zinc-900 border border-zinc-800 rounded-2xl"></div>
+            <div key={i} className="h-28 bg-zinc-950 p-4 animate-pulse" />
           ))}
         </div>
-        <div className="h-64 bg-zinc-900 border border-zinc-800 rounded-2xl"></div>
+        <div className="h-56 bg-zinc-950 border border-zinc-850 rounded-lg animate-pulse" />
       </div>
     );
   }
@@ -85,42 +80,31 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({ user: _use
 
   const healthyCount = upstreams.filter((s) => s.status === 'connected' && s.enabled).length;
   const totalEnabled = upstreams.filter((s) => s.enabled).length;
+  const hasErrors = (hist?.errorRatePercentage || 0) > 0;
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
       {/* 1. Header Bar with Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-800/80 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-zinc-850">
         <div>
-          <div className="flex items-center space-x-2.5">
-            <div className="p-2 bg-gradient-to-br from-cf-orange/20 to-amber-500/10 rounded-xl border border-cf-orange/30 text-cf-orange">
-              <Activity className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
-                <span>Gateway Observability & Telemetry</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  RED Method
-                </span>
-              </h1>
-              <p className="text-xs text-zinc-400 mt-0.5">
-                Real-time request rate, error distribution, latency percentiles, and upstream failure isolation.
-              </p>
-            </div>
-          </div>
+          <h1 className="text-lg font-semibold text-white tracking-tight">Observability</h1>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            RED method telemetry, upstream health, and request latency percentiles.
+          </p>
         </div>
 
         {/* Time Window Switcher & Refresh Controls */}
-        <div className="flex items-center space-x-3">
-          {/* Time Window Pills */}
-          <div className="flex items-center bg-zinc-900/90 p-1 rounded-xl border border-zinc-800 text-xs font-mono">
+        <div className="flex items-center space-x-2">
+          {/* Time Window Selector */}
+          <div className="flex items-center bg-zinc-900 rounded-md border border-zinc-800 p-0.5 text-xs font-mono">
             {(['1h', '24h', '7d'] as const).map((w) => (
               <button
                 key={w}
                 onClick={() => setTimeWindow(w)}
-                className={`px-3 py-1 rounded-lg transition-all ${
+                className={`px-2.5 py-1 rounded transition-colors ${
                   timeWindow === w
-                    ? 'bg-zinc-800 text-white font-semibold shadow-sm border border-zinc-700/60'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-zinc-800 text-white font-medium'
+                    : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
                 {w}
@@ -131,294 +115,242 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({ user: _use
           {/* Auto Refresh Toggle */}
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition ${
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md border text-xs font-mono transition ${
               autoRefresh
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                ? 'bg-zinc-900 text-zinc-300 border-zinc-700'
+                : 'bg-zinc-950 text-zinc-500 border-zinc-850 hover:text-zinc-300'
             }`}
-            title="Auto-refresh every 10s"
+            title="Auto-refresh every 10 seconds"
           >
-            <Radio className={`w-3.5 h-3.5 ${autoRefresh ? 'animate-pulse' : ''}`} />
-            <span className="hidden md:inline">Auto (10s)</span>
+            <Radio className={`w-3 h-3 ${autoRefresh ? 'text-emerald-400' : 'text-zinc-600'}`} />
+            <span className="hidden sm:inline">10s</span>
           </button>
 
           {/* Manual Refresh Button */}
           <button
             onClick={() => fetchMetrics(true)}
             disabled={refreshing}
-            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 hover:border-zinc-700 transition"
+            className="p-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 transition"
             title="Refresh now"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-cf-orange' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-cf-orange' : ''}`} />
           </button>
         </div>
       </div>
 
       {/* Error Notice */}
       {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
+        <div className="p-3 rounded-md bg-rose-950/20 border border-rose-900/40 text-rose-300 text-xs flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
             <span>{error}</span>
           </div>
-          <button onClick={() => fetchMetrics(false)} className="underline hover:text-rose-200">
+          <button onClick={() => fetchMetrics(false)} className="underline hover:text-rose-200 font-mono text-[11px]">
             Retry
           </button>
         </div>
       )}
 
-      {/* 2. Top KPI Cards — The RED Method (Rate, Errors, Duration) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Rate (Tool Calls) */}
-        <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 shadow-sm relative overflow-hidden group hover:border-zinc-700/80 transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Rate (Tool Calls)</span>
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline space-x-2">
-            <span className="text-3xl font-bold font-mono text-white tracking-tight">
+      {/* 2. Compact KPI Summary Strip (Grafana / Datadog style) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 border border-zinc-800 bg-zinc-950 rounded-lg divide-y lg:divide-y-0 lg:divide-x divide-zinc-800">
+        {/* Metric 1: Rate (Requests) */}
+        <div className="p-4 flex flex-col justify-between">
+          <div className="text-xs text-zinc-400 font-medium">Requests</div>
+          <div className="my-2">
+            <div className="text-2xl font-semibold font-mono text-white tracking-tight">
               {hist?.totalCalls.toLocaleString() || 0}
-            </span>
-            <span className="text-xs text-zinc-500 font-mono">in {timeWindow}</span>
+            </div>
+            <div className="text-[11px] text-zinc-500 font-mono mt-0.5">Calls in {timeWindow}</div>
           </div>
-          <div className="mt-3 text-[11px] font-mono text-zinc-400 flex items-center justify-between border-t border-zinc-800/60 pt-2.5">
-            <span className="flex items-center space-x-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-              <span>In-flight active:</span>
-            </span>
-            <span className="font-semibold text-white">{proc?.activeRequests || 0}</span>
+          <div className="text-[11px] font-mono text-zinc-400 flex items-center justify-between pt-2 border-t border-zinc-900">
+            <span className="text-zinc-500">In-flight active</span>
+            <span className="text-zinc-200">{proc?.activeRequests || 0}</span>
           </div>
         </div>
 
-        {/* Card 2: Errors (Failure Rate) */}
-        <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 shadow-sm relative overflow-hidden group hover:border-zinc-700/80 transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Error Rate</span>
+        {/* Metric 2: Error Rate */}
+        <div className="p-4 flex flex-col justify-between">
+          <div className="text-xs text-zinc-400 font-medium">Error rate</div>
+          <div className="my-2">
             <div
-              className={`p-2 rounded-xl border ${
-                (hist?.errorRatePercentage || 0) > 5
-                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                  : (hist?.errorRatePercentage || 0) > 0
-                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-              }`}
-            >
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline space-x-2">
-            <span
-              className={`text-3xl font-bold font-mono tracking-tight ${
-                (hist?.errorRatePercentage || 0) > 5
-                  ? 'text-rose-400'
-                  : (hist?.errorRatePercentage || 0) > 0
-                  ? 'text-amber-400'
-                  : 'text-emerald-400'
+              className={`text-2xl font-semibold font-mono tracking-tight ${
+                hasErrors ? 'text-rose-400' : 'text-zinc-100'
               }`}
             >
               {hist?.errorRatePercentage ?? 0}%
-            </span>
-            <span className="text-xs text-zinc-500 font-mono">
-              ({hist?.errorCalls || 0} failed / {hist?.totalCalls || 0})
-            </span>
+            </div>
+            <div className="text-[11px] text-zinc-500 font-mono mt-0.5">
+              {hist?.errorCalls || 0} failed / {hist?.totalCalls || 0} total
+            </div>
           </div>
-          <div className="mt-3 text-[11px] font-mono text-zinc-400 flex items-center justify-between border-t border-zinc-800/60 pt-2.5">
-            <span>Auth / RBAC rejections:</span>
-            <span className="font-semibold text-white">{proc?.processLifetimeAuthFailures || 0}</span>
+          <div className="text-[11px] font-mono text-zinc-400 flex items-center justify-between pt-2 border-t border-zinc-900">
+            <span className="text-zinc-500">Auth / RBAC rejections</span>
+            <span className="text-zinc-200">{proc?.processLifetimeAuthFailures || 0}</span>
           </div>
         </div>
 
-        {/* Card 3: Duration (Latency Percentiles) */}
-        <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 shadow-sm relative overflow-hidden group hover:border-zinc-700/80 transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Duration (p95 Latency)</span>
-            <div className="p-2 rounded-xl bg-cf-orange/10 text-cf-orange border border-cf-orange/20">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline space-x-2">
-            <span className="text-3xl font-bold font-mono text-white tracking-tight">
+        {/* Metric 3: Duration (p95 Latency) */}
+        <div className="p-4 flex flex-col justify-between">
+          <div className="text-xs text-zinc-400 font-medium">p95 Latency</div>
+          <div className="my-2">
+            <div className="text-2xl font-semibold font-mono text-white tracking-tight">
               {hist?.latencyMs.p95 || 0}
-              <span className="text-sm font-normal text-zinc-400 ml-1">ms</span>
-            </span>
-            <span className="text-xs text-zinc-500 font-mono">avg {hist?.latencyMs.average || 0}ms</span>
+              <span className="text-xs font-normal text-zinc-500 ml-1">ms</span>
+            </div>
+            <div className="text-[11px] text-zinc-500 font-mono mt-0.5">
+              Average {hist?.latencyMs.average || 0} ms
+            </div>
           </div>
-          <div className="mt-3 text-[11px] font-mono text-zinc-400 flex items-center justify-between border-t border-zinc-800/60 pt-2.5">
-            <span>p50: {hist?.latencyMs.p50 || 0}ms</span>
-            <span className="text-zinc-600">|</span>
-            <span>p90: {hist?.latencyMs.p90 || 0}ms</span>
-            <span className="text-zinc-600">|</span>
-            <span className="text-amber-400 font-semibold">p99: {hist?.latencyMs.p99 || 0}ms</span>
+          <div className="text-[11px] font-mono text-zinc-400 flex items-center justify-between pt-2 border-t border-zinc-900">
+            <span className="text-zinc-500">p50 / p90 / p99</span>
+            <span className="text-zinc-300">
+              {hist?.latencyMs.p50} / {hist?.latencyMs.p90} / {hist?.latencyMs.p99}
+            </span>
           </div>
         </div>
 
-        {/* Card 4: Upstreams Health */}
-        <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 shadow-sm relative overflow-hidden group hover:border-zinc-700/80 transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Upstream Health</span>
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-              <Server className="w-4 h-4" />
+        {/* Metric 4: Upstreams Health */}
+        <div className="p-4 flex flex-col justify-between">
+          <div className="text-xs text-zinc-400 font-medium">Upstream status</div>
+          <div className="my-2">
+            <div className="text-2xl font-semibold font-mono text-white tracking-tight flex items-center space-x-2">
+              <span>{healthyCount}/{totalEnabled}</span>
+              <span className="text-xs font-sans font-medium text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                Connected
+              </span>
+            </div>
+            <div className="text-[11px] text-zinc-500 font-mono mt-0.5">
+              {upstreams.length - totalEnabled} disabled
             </div>
           </div>
-          <div className="mt-3 flex items-baseline space-x-2">
-            <span className="text-3xl font-bold font-mono text-white tracking-tight">
-              {healthyCount}
-              <span className="text-lg font-normal text-zinc-500 mx-1">/</span>
-              {totalEnabled}
-            </span>
-            <span className="text-xs text-emerald-400 font-mono font-medium">Healthy</span>
-          </div>
-          <div className="mt-3 text-[11px] font-mono text-zinc-400 flex items-center justify-between border-t border-zinc-800/60 pt-2.5">
-            <span>Process uptime:</span>
-            <span className="font-semibold text-white">
+          <div className="text-[11px] font-mono text-zinc-400 flex items-center justify-between pt-2 border-t border-zinc-900">
+            <span className="text-zinc-500">Process uptime</span>
+            <span className="text-zinc-200">
               {Math.floor((proc?.uptimeSeconds || 0) / 3600)}h {Math.floor(((proc?.uptimeSeconds || 0) % 3600) / 60)}m
             </span>
           </div>
         </div>
       </div>
 
-      {/* 3. Upstream Failure Isolation & Health Matrix */}
-      <div className="p-6 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>
-            <h2 className="text-base font-bold text-white tracking-tight flex items-center space-x-2">
-              <Zap className="w-4 h-4 text-cf-orange" />
-              <span>Upstream Isolation & Runtime Health</span>
-            </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Each upstream operates behind an independent 15-second timeout and circuit barrier.
-            </p>
+      {/* 3. Upstream Runtime Status Matrix */}
+      <div className="border border-zinc-800 bg-zinc-950 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <h2 className="text-xs font-semibold text-zinc-200 tracking-tight">Upstream Servers Runtime Matrix</h2>
+            <span className="text-[11px] font-mono text-zinc-500">· 15s timeout boundary</span>
           </div>
-          <div className="text-[11px] font-mono text-zinc-500 flex items-center space-x-2">
-            <span>Last sync:</span>
-            <span className="text-zinc-300 font-semibold">{lastRefreshedAt}</span>
-          </div>
+          <span className="text-[11px] font-mono text-zinc-500">Synced at {lastRefreshedAt}</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-          {upstreams.map((server) => {
-            const isConnected = server.status === 'connected' && server.enabled;
-            const isUnreachable = server.status === 'unreachable' && server.enabled;
-            const isDisabled = !server.enabled;
+        <div className="divide-y divide-zinc-850">
+          <table className="min-w-full text-left text-xs">
+            <thead className="bg-zinc-900/50 text-zinc-400 font-mono text-[11px]">
+              <tr>
+                <th className="px-4 py-2.5 font-medium">Server</th>
+                <th className="px-4 py-2.5 font-medium">Status</th>
+                <th className="px-4 py-2.5 font-medium text-right">Requests</th>
+                <th className="px-4 py-2.5 font-medium text-right">Success rate</th>
+                <th className="px-4 py-2.5 font-medium text-right">Avg latency</th>
+                <th className="px-4 py-2.5 font-medium text-right">Errors</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-850 font-mono text-xs">
+              {upstreams.map((server) => {
+                const isConnected = server.status === 'connected' && server.enabled;
+                const isUnreachable = server.status === 'unreachable' && server.enabled;
+                const isDisabled = !server.enabled;
 
-            return (
-              <div
-                key={server.id}
-                className={`p-4 rounded-xl border transition-all ${
-                  isConnected
-                    ? 'bg-zinc-900/80 border-emerald-500/20 hover:border-emerald-500/40'
-                    : isUnreachable
-                    ? 'bg-rose-950/20 border-rose-500/30 hover:border-rose-500/50'
-                    : 'bg-zinc-900/30 border-zinc-800 opacity-60'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span
-                      className={`w-2.5 h-2.5 rounded-full ${
-                        isConnected
-                          ? 'bg-emerald-400 animate-pulse'
-                          : isUnreachable
-                          ? 'bg-rose-500'
-                          : 'bg-zinc-600'
-                      }`}
-                    ></span>
-                    <span className="font-semibold text-sm text-white">{server.name}</span>
-                  </div>
-                  <span
-                    className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded-md font-medium border ${
-                      isConnected
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                        : isUnreachable
-                        ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                        : 'bg-zinc-800 text-zinc-400 border-zinc-700'
-                    }`}
-                  >
-                    {isDisabled ? 'Disabled' : server.status}
-                  </span>
-                </div>
-
-                <div className="mt-4 grid grid-cols-3 gap-2 text-center border-t border-zinc-800/80 pt-3">
-                  <div>
-                    <div className="text-[10px] text-zinc-400 uppercase font-mono">Calls</div>
-                    <div className="text-sm font-bold font-mono text-white mt-0.5">{server.totalCalls}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-zinc-400 uppercase font-mono">Success</div>
-                    <div
-                      className={`text-sm font-bold font-mono mt-0.5 ${
-                        server.totalCalls === 0
-                          ? 'text-zinc-500'
-                          : (server.successRate || 0) < 95
-                          ? 'text-rose-400'
-                          : 'text-emerald-400'
-                      }`}
-                    >
-                      {server.totalCalls > 0 && server.successRate !== null ? `${server.successRate}%` : '—'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-zinc-400 uppercase font-mono">Avg Lat</div>
-                    <div className="text-sm font-bold font-mono text-cf-orange mt-0.5">
-                      {server.totalCalls > 0 ? `${server.averageLatencyMs}ms` : '—'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-zinc-500 pt-2 border-t border-zinc-800/40">
-                  <span>Slug: {server.slug}</span>
-                  <span className={server.recentFailures > 0 ? 'text-rose-400 font-semibold' : 'text-zinc-500'}>
-                    {server.recentFailures} error(s)
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+                return (
+                  <tr key={server.id} className="hover:bg-zinc-900/30 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="font-sans font-medium text-white">{server.name}</div>
+                      <div className="text-[11px] text-zinc-500 font-mono">{server.slug}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center space-x-1.5 text-xs">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isConnected
+                              ? 'bg-emerald-400'
+                              : isUnreachable
+                              ? 'bg-rose-500'
+                              : 'bg-zinc-600'
+                          }`}
+                        />
+                        <span className="capitalize font-sans text-zinc-300">
+                          {isDisabled ? 'Disabled' : server.status}
+                        </span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-zinc-200">
+                      {server.totalCalls.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {server.totalCalls === 0 ? (
+                        <span className="text-zinc-600">—</span>
+                      ) : (server.successRate || 0) < 95 ? (
+                        <span className="text-rose-400 font-medium">{server.successRate}%</span>
+                      ) : (
+                        <span className="text-emerald-400">{server.successRate}%</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right text-zinc-300">
+                      {server.totalCalls > 0 ? `${server.averageLatencyMs} ms` : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {server.recentFailures > 0 ? (
+                        <span className="text-rose-400 font-medium">{server.recentFailures}</span>
+                      ) : (
+                        <span className="text-zinc-600">0</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
       {/* 4. Traffic Breakdown & Recent Failures (2 Columns) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Left Column: Tool Traffic Distribution */}
-        <div className="p-6 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white tracking-tight flex items-center space-x-2">
-              <BarChart2 className="w-4 h-4 text-blue-400" />
-              <span>Tool Traffic Distribution ({timeWindow})</span>
+        <div className="border border-zinc-800 bg-zinc-950 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-zinc-850">
+            <h2 className="text-xs font-semibold text-zinc-200 tracking-tight">
+              Tool Traffic Distribution ({timeWindow})
             </h2>
-            <span className="text-xs text-zinc-500 font-mono">{tools.length} active tools</span>
+            <span className="text-[11px] text-zinc-500 font-mono">{tools.length} active tools</span>
           </div>
 
           {tools.length === 0 ? (
-            <div className="py-12 text-center text-zinc-500 text-xs font-mono">
+            <div className="py-10 text-center text-zinc-500 text-xs font-mono">
               No tool executions recorded in the selected {timeWindow} window.
             </div>
           ) : (
-            <div className="space-y-3 pt-1">
+            <div className="space-y-2.5 pt-1">
               {tools.slice(0, 8).map((tool) => {
                 const maxCalls = tools[0]?.callCount || 1;
                 const percentage = Math.round((tool.callCount / maxCalls) * 100);
 
                 return (
-                  <div key={tool.toolName} className="space-y-1.5">
+                  <div key={tool.toolName} className="space-y-1">
                     <div className="flex items-center justify-between text-xs font-mono">
-                      <span className="text-zinc-200 font-medium truncate max-w-[16rem]">
-                        <span className="text-zinc-500 mr-1.5">[{tool.serverSlug}]</span>
+                      <span className="text-zinc-300 truncate max-w-[16rem]" title={tool.toolName}>
+                        <span className="text-zinc-500 mr-1.5">{tool.serverSlug} /</span>
                         {tool.toolName}
                       </span>
-                      <div className="flex items-center space-x-3">
-                        <span className="text-zinc-400">{tool.avgDurationMs}ms</span>
-                        <span className="text-white font-semibold">{tool.callCount} calls</span>
+                      <div className="flex items-center space-x-3 text-[11px]">
+                        <span className="text-zinc-500">{tool.avgDurationMs}ms</span>
+                        <span className="text-zinc-200 font-medium">{tool.callCount} calls</span>
                       </div>
                     </div>
                     {/* Progress Bar */}
-                    <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="w-full h-1 bg-zinc-900 rounded overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-cf-orange to-amber-500 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.max(percentage, 5)}%` }}
-                      ></div>
+                        className="h-full bg-cf-orange rounded transition-all duration-300"
+                        style={{ width: `${Math.max(percentage, 4)}%` }}
+                      />
                     </div>
                   </div>
                 );
@@ -427,70 +359,83 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({ user: _use
           )}
         </div>
 
-        {/* Right Column: Recent Failures Stream */}
-        <div className="p-6 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white tracking-tight flex items-center space-x-2">
-              <ShieldAlert className="w-4 h-4 text-rose-400" />
-              <span>Recent Failures & Rejections</span>
-            </h2>
+        {/* Right Column: Recent Failures Stream with Expandable Detail */}
+        <div className="border border-zinc-800 bg-zinc-950 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-zinc-850">
+            <h2 className="text-xs font-semibold text-zinc-200 tracking-tight">Recent Failures & Rejections</h2>
             {onNavigateToAudit && (
               <button
                 onClick={onNavigateToAudit}
-                className="text-xs text-cf-orange hover:text-amber-400 flex items-center space-x-1 font-medium transition"
+                className="text-[11px] text-cf-orange hover:underline flex items-center space-x-1 transition"
               >
-                <span>View Full Audit Trail</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
+                <span>View audit trail</span>
+                <ArrowUpRight className="w-3 h-3" />
               </button>
             )}
           </div>
 
           {recentFailures.length === 0 ? (
-            <div className="py-12 text-center text-emerald-400 text-xs font-mono flex flex-col items-center justify-center space-y-2">
-              <CheckCircle2 className="w-8 h-8 text-emerald-500/80" />
-              <span>Zero failures recorded in the selected {timeWindow} window!</span>
+            <div className="py-10 text-center text-zinc-400 text-xs font-mono flex flex-col items-center justify-center space-y-1.5">
+              <CheckCircle className="w-5 h-5 text-emerald-400" />
+              <span>Zero errors recorded in {timeWindow}</span>
             </div>
           ) : (
-            <div className="space-y-2.5 pt-1 overflow-x-auto">
-              {recentFailures.slice(0, 5).map((failure) => (
-                <div
-                  key={failure.id}
-                  className="p-3 rounded-xl bg-zinc-900/80 border border-rose-500/20 text-xs font-mono space-y-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-rose-400 font-semibold flex items-center space-x-1.5">
-                      <XCircle className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate max-w-[14rem]">{failure.toolName}</span>
-                    </span>
-                    <span className="text-zinc-500 text-[11px]">
-                      {new Date(failure.calledAt).toLocaleTimeString()} · {failure.durationMs}ms
-                    </span>
+            <div className="space-y-1.5 pt-1">
+              {recentFailures.slice(0, 6).map((failure) => {
+                const isExpanded = expandedFailureId === failure.id;
+                return (
+                  <div
+                    key={failure.id}
+                    className="border border-zinc-850 rounded-md bg-zinc-900/40 text-xs font-mono overflow-hidden transition-colors hover:border-zinc-800"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setExpandedFailureId(isExpanded ? null : failure.id)}
+                      className="w-full p-2.5 flex items-center justify-between text-left text-xs"
+                    >
+                      <div className="flex items-center space-x-2 truncate">
+                        {isExpanded ? (
+                          <ChevronDown className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                        )}
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                        <span className="text-zinc-200 truncate font-medium">{failure.toolName}</span>
+                      </div>
+                      <span className="text-[11px] text-zinc-500 shrink-0 ml-2">
+                        {new Date(failure.calledAt).toLocaleTimeString()} · {failure.durationMs}ms
+                      </span>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="p-2.5 pt-0 border-t border-zinc-850 bg-black/60 text-[11px] space-y-1">
+                        <div className="text-rose-400 font-mono break-all">{failure.errorMsg}</div>
+                        <div className="text-zinc-500 text-[10px] pt-1">
+                          Log ID: {failure.id} · Timestamp: {failure.calledAt}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-zinc-400 text-[11px] line-clamp-2 bg-black/40 p-1.5 rounded border border-zinc-800/60">
-                    {failure.errorMsg}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </div>
 
-      {/* 5. Production Prometheus Scrape Information Pill */}
-      <div className="p-4 rounded-xl bg-zinc-900/30 border border-zinc-800/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-zinc-400">
-        <div className="flex items-center space-x-2.5">
-          <div className="w-2 h-2 rounded-full bg-cf-orange"></div>
-          <span>
-            Prometheus Scrape Endpoint:{' '}
-            <code className="text-zinc-200 font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
-              GET /metrics
-            </code>
-          </span>
-          <span className="text-zinc-500">|</span>
-          <span>OpenMetrics & RED compliant</span>
+      {/* 5. Prometheus Scrape Information Footer */}
+      <div className="px-4 py-2.5 rounded-md border border-zinc-850 bg-zinc-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-zinc-400 font-mono">
+        <div className="flex items-center space-x-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-cf-orange" />
+          <span>Prometheus Metrics:</span>
+          <code className="text-zinc-200 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+            GET /metrics
+          </code>
+          <span className="text-zinc-600">·</span>
+          <span className="text-zinc-500">OpenMetrics & RED standard</span>
         </div>
-        <div className="font-mono text-[11px] text-zinc-500">
-          Historical: PostgreSQL Audit Trail · Real-time: prom-client Node.js Engine
+        <div className="text-[11px] text-zinc-500">
+          Scraping interval: 10s · Storage: in-memory Node.js registry
         </div>
       </div>
     </div>

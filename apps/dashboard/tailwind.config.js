@@ -12,6 +12,9 @@ export default {
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       colors: {
+        zinc: {
+          850: '#1f1f23',
+        },
         claude: {
           bg: '#1e1e1e', // Claude dark mode warm charcoal grey
           surface: '#262626',

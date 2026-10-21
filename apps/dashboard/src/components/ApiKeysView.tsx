@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, ApiKey, User } from '../api';
-import { Key, Plus, Copy, Check, Trash2, ShieldAlert, X, Users, AlertTriangle, RefreshCw, Activity } from 'lucide-react';
+import { Plus, Copy, Check, Trash2, X, AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface ApiKeysViewProps {
   user?: User;
@@ -78,51 +78,45 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-850">
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className="text-xl font-bold text-white tracking-tight">API Key Credentials</h1>
-            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-700 text-zinc-300">
+            <h1 className="text-lg font-semibold text-white tracking-tight">API Keys</h1>
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
               {keys.length} {scope === 'team' ? 'team keys' : 'issued'}
             </span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            Secure client keys using SHA-256 indexed lookups. Personalized prefix: <code className="text-cf-orange font-mono">mcp_live_</code>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Machine-to-machine tokens authenticated via indexed SHA-256 hashes. Prefix: <code className="text-zinc-300 font-mono">mcp_live_</code>
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
           {/* Admin Scope Toggle */}
           {isAdmin && (
-            <div className="flex items-center bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+            <div className="flex items-center bg-zinc-900 p-0.5 rounded-md border border-zinc-800 text-xs">
               <button
                 onClick={() => setScope('team')}
-                className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium transition ${
-                  scope === 'team'
-                    ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/60'
-                    : 'text-zinc-400 hover:text-white'
+                className={`px-2.5 py-1 rounded transition-colors ${
+                  scope === 'team' ? 'bg-zinc-800 text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
-                <Users className="w-3.5 h-3.5 text-cf-orange" />
-                <span>All Team Keys</span>
+                Team Keys
               </button>
               <button
                 onClick={() => setScope('my')}
-                className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium transition ${
-                  scope === 'my'
-                    ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/60'
-                    : 'text-zinc-400 hover:text-white'
+                className={`px-2.5 py-1 rounded transition-colors ${
+                  scope === 'my' ? 'bg-zinc-800 text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
-                <Key className="w-3.5 h-3.5 text-zinc-400" />
-                <span>My Keys</span>
+                Personal
               </button>
             </div>
           )}
 
           <button
             onClick={() => fetchKeys(scope)}
-            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition shadow-sm"
+            className="p-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition"
             title="Refresh"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-cf-orange' : ''}`} />
@@ -134,16 +128,16 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
               setCreatedKey(null);
               setIsModalOpen(true);
             }}
-            className="py-2 px-3.5 rounded-lg bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center space-x-2 shadow-sm shadow-cf-orange/20"
+            className="px-3 py-1.5 rounded-md bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center space-x-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Generate API Key</span>
+            <span>Generate Key</span>
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+        <div className="p-3 rounded-md bg-rose-950/20 border border-rose-900/40 text-rose-300 text-xs">
           {error}
         </div>
       )}
@@ -151,40 +145,26 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
       {loading ? (
         <div className="p-16 text-center text-zinc-500 font-mono text-xs">Loading API keys...</div>
       ) : (
-        <div className="bg-zinc-950/80 border border-zinc-800 rounded-xl shadow-sm overflow-hidden">
-          <table className="min-w-full divide-y divide-zinc-800">
-            <thead className="bg-zinc-900/60">
+        <div className="border border-zinc-800 bg-zinc-950 rounded-lg overflow-hidden">
+          <table className="min-w-full text-left text-xs">
+            <thead className="bg-zinc-900/50 text-zinc-400 font-mono text-[11px] border-b border-zinc-800">
               <tr>
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                  Key Name
-                </th>
+                <th className="px-4 py-2.5 font-medium">Name</th>
                 {scope === 'team' && (
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                    Owner / Member
-                  </th>
+                  <th className="px-4 py-2.5 font-medium">Owner</th>
                 )}
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                  Prefix (Hashed lookup)
-                </th>
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                  Usage (Calls)
-                </th>
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                  Status
-                </th>
-                <th className="px-5 py-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                  Created
-                </th>
-                <th className="px-5 py-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-                  Action
-                </th>
+                <th className="px-4 py-2.5 font-medium">Key Prefix</th>
+                <th className="px-4 py-2.5 font-medium">Usage</th>
+                <th className="px-4 py-2.5 font-medium">Status</th>
+                <th className="px-4 py-2.5 font-medium">Created</th>
+                <th className="px-4 py-2.5 font-medium text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/60">
+            <tbody className="divide-y divide-zinc-850">
               {keys.length === 0 ? (
                 <tr>
-                  <td colSpan={scope === 'team' ? 7 : 6} className="px-6 py-12 text-center text-zinc-500 text-xs">
-                    No API keys found. Generate a key to connect external MCP clients (Cursor, Claude Code, MCP Inspector).
+                  <td colSpan={scope === 'team' ? 7 : 6} className="px-4 py-12 text-center text-zinc-500 text-xs font-mono">
+                    No API keys issued yet. Generate a key to connect Claude Code, Cursor, or Postman.
                   </td>
                 </tr>
               ) : (
@@ -194,69 +174,53 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
                   const canRevoke = isAdmin || isOwner;
 
                   return (
-                    <tr key={k.id} className="hover:bg-zinc-900/40 transition">
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs font-medium text-white">
+                    <tr key={k.id} className="hover:bg-zinc-900/30 transition-colors">
+                      <td className="px-4 py-3 font-medium text-white">
                         {k.name}
                       </td>
 
                       {scope === 'team' && (
-                        <td className="px-5 py-3.5 whitespace-nowrap text-xs">
+                        <td className="px-4 py-3">
                           {k.user ? (
-                            <div className="flex items-center space-x-2">
-                              <span className="font-medium text-white">{k.user.name}</span>
-                              <span
-                                className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full border ${
-                                  k.user.role === 'admin'
-                                    ? 'bg-cf-orange/15 text-cf-orange border-cf-orange/30'
-                                    : 'bg-zinc-900 text-zinc-400 border-zinc-800'
-                                }`}
-                              >
+                            <div className="flex items-center space-x-1.5">
+                              <span className="text-zinc-200">{k.user.name}</span>
+                              <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">
                                 {k.user.role}
                               </span>
                             </div>
                           ) : (
-                            <span className="text-zinc-500 font-mono text-[11px]">—</span>
+                            <span className="text-zinc-600 font-mono text-[11px]">—</span>
                           )}
                         </td>
                       )}
 
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs font-mono text-cf-orange">
+                      <td className="px-4 py-3 font-mono text-zinc-300">
                         {k.keyPrefix}••••••••
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs font-mono">
-                        <span
-                          className={`inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[11px] ${
-                            (k.callCount || 0) > 0
-                              ? 'bg-cf-orange/10 text-cf-orange border border-cf-orange/20 font-medium'
-                              : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
-                          }`}
-                        >
-                          <Activity className="w-3 h-3" />
-                          <span>{k.callCount || 0} calls</span>
+                      <td className="px-4 py-3 font-mono text-zinc-400">
+                        {k.callCount || 0} calls
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center space-x-1.5 text-xs">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              isRevoked ? 'bg-zinc-600' : 'bg-emerald-400'
+                            }`}
+                          />
+                          <span className={isRevoked ? 'text-zinc-500 font-sans' : 'text-zinc-300 font-sans'}>
+                            {isRevoked ? 'Revoked' : 'Active'}
+                          </span>
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs">
-                        {isRevoked ? (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[11px]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                            <span>Revoked</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                            <span>Active</span>
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-[11px] text-zinc-400 font-mono">
+                      <td className="px-4 py-3 text-[11px] text-zinc-500 font-mono">
                         {new Date(k.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-right text-xs">
+                      <td className="px-4 py-3 text-right">
                         {!isRevoked && canRevoke && (
                           <button
                             onClick={() => setRevokingKey(k)}
-                            className="text-xs text-rose-400 hover:text-rose-300 font-medium inline-flex items-center space-x-1 p-1 rounded-md hover:bg-rose-500/10 transition"
-                            title="Revoke Key"
+                            className="text-xs text-zinc-400 hover:text-rose-400 font-medium inline-flex items-center space-x-1 px-2 py-1 rounded hover:bg-zinc-900 transition"
+                            title="Revoke key"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             <span>Revoke</span>
@@ -275,27 +239,23 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
       {/* Generate Key Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
-              <h3 className="text-base font-bold text-white flex items-center space-x-2">
-                <Key className="w-4 h-4 text-cf-orange" />
-                <span>{createdKey ? 'API Key Generated' : 'Create Personalized API Key'}</span>
+          <div className="bg-zinc-950 border border-zinc-800 rounded-lg max-w-md w-full p-5 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <h3 className="text-sm font-semibold text-white">
+                {createdKey ? 'API Key Generated' : 'Create API Key'}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900"
+                className="p-1 rounded text-zinc-400 hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {createdKey ? (
-              <div className="mt-4 space-y-4">
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-xs flex items-start space-x-2">
-                  <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <span>
-                    Copy this key immediately. It is stored as a SHA-256 hash in the database and cannot be retrieved later.
-                  </span>
+              <div className="mt-3 space-y-3">
+                <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400 text-xs leading-relaxed">
+                  Save this key now. It is stored as an indexed SHA-256 hash and cannot be viewed again.
                 </div>
 
                 <div className="relative">
@@ -303,11 +263,11 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
                     type="text"
                     readOnly
                     value={createdKey}
-                    className="w-full pl-3 pr-20 py-2.5 bg-black border border-zinc-800 rounded-lg text-xs font-mono text-cf-orange focus:outline-none"
+                    className="w-full pl-2.5 pr-20 py-2 bg-black border border-zinc-800 rounded text-xs font-mono text-cf-orange focus:outline-none"
                   />
                   <button
                     onClick={() => handleCopy(createdKey)}
-                    className="absolute right-1.5 top-1.5 px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-xs font-medium transition flex items-center space-x-1"
+                    className="absolute right-1.5 top-1.5 px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-xs transition flex items-center space-x-1"
                   >
                     {copied ? (
                       <>
@@ -326,42 +286,42 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
                 <div className="pt-2 flex justify-end">
                   <button
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-1.5 bg-cf-orange hover:bg-cf-hover text-white rounded-lg text-xs font-medium transition"
+                    className="px-3 py-1.5 bg-cf-orange hover:bg-cf-hover text-white rounded text-xs font-medium transition"
                   >
                     Done
                   </button>
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleCreate} className="mt-4 space-y-3.5">
+              <form onSubmit={handleCreate} className="mt-3 space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">Key Description / Name</label>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1">Key Description</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Production MCP Client Key"
+                    placeholder="e.g. Cursor / Claude Code CLI"
                     value={keyName}
                     onChange={(e) => setKeyName(e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-cf-orange"
+                    className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-xs text-white focus:outline-none focus:border-zinc-700"
                   />
                 </div>
 
                 <div className="text-[11px] text-zinc-500 font-mono">
-                  Prefix: <span className="text-zinc-300">mcp_live_</span> + 32-character secure random hex
+                  Prefix: <span className="text-zinc-300">mcp_live_</span> + 32-character random hex
                 </div>
 
-                <div className="pt-2 flex justify-end space-x-2.5">
+                <div className="pt-2 flex justify-end space-x-2">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-3.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg text-xs font-medium border border-zinc-800 transition"
+                    className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded text-xs border border-zinc-800 transition"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={issuing}
-                    className="px-4 py-1.5 bg-cf-orange hover:bg-cf-hover text-white rounded-lg text-xs font-medium transition disabled:opacity-50"
+                    className="px-3 py-1.5 bg-cf-orange hover:bg-cf-hover text-white rounded text-xs font-medium transition disabled:opacity-50"
                   >
                     {issuing ? 'Generating...' : 'Create Key'}
                   </button>
@@ -372,52 +332,44 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
         </div>
       )}
 
-      {/* Kumo Revoke Confirmation Modal */}
+      {/* Revoke Confirmation Modal */}
       {revokingKey && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-[#1e1e1e] border border-[#333] rounded-2xl max-w-sm w-full p-5 shadow-2xl shadow-black/80">
-            <div className="flex items-center space-x-3 text-rose-400 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="w-4 h-4 text-rose-400" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-white">Revoke API Key</h3>
-                <p className="text-[11px] text-zinc-400">Immediate access revocation</p>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-lg max-w-sm w-full p-5 shadow-2xl space-y-3">
+            <div className="flex items-center space-x-2 text-rose-400">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <h3 className="text-sm font-semibold text-white">Revoke API Key</h3>
             </div>
 
-            <p className="text-xs text-zinc-300 leading-relaxed mb-3">
-              Are you sure you want to revoke <span className="font-semibold text-white font-mono">{revokingKey.name}</span>
-              {revokingKey.user ? (
-                <> belonging to <span className="text-cf-orange font-medium">{revokingKey.user.name}</span></>
-              ) : ''}?
+            <p className="text-xs text-zinc-300 leading-relaxed">
+              Are you sure you want to revoke <span className="font-semibold text-white font-mono">{revokingKey.name}</span>?
             </p>
 
-            <div className="p-2.5 rounded-lg bg-zinc-950/70 border border-zinc-800 text-[11px] font-mono text-zinc-400 mb-4">
-              Prefix: <span className="text-cf-orange">{revokingKey.keyPrefix}••••••••</span>
+            <div className="p-2.5 rounded bg-zinc-900/60 border border-zinc-850 text-[11px] font-mono text-zinc-400">
+              Prefix: <span className="text-zinc-200">{revokingKey.keyPrefix}••••••••</span>
               <br />
-              Subsequent MCP calls using this key will immediately return <span className="text-rose-400">401 Unauthorized</span>.
+              Subsequent requests using this key will immediately return <span className="text-rose-400">401 Unauthorized</span>.
             </div>
 
-            <div className="flex items-center justify-end space-x-2">
+            <div className="flex items-center justify-end space-x-2 pt-1">
               <button
                 onClick={() => setRevokingKey(null)}
                 disabled={revoking}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-white bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/60 transition"
+                className="px-3 py-1.5 rounded text-xs text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmRevoke}
                 disabled={revoking}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-white bg-rose-600 hover:bg-rose-500 active:bg-rose-700 transition shadow-sm disabled:opacity-50 flex items-center space-x-1.5"
+                className="px-3 py-1.5 rounded text-xs font-medium text-white bg-rose-600 hover:bg-rose-500 transition disabled:opacity-50 flex items-center space-x-1.5"
               >
                 {revoking ? (
                   <span>Revoking...</span>
                 ) : (
                   <>
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Revoke Immediately</span>
+                    <span>Revoke Key</span>
                   </>
                 )}
               </button>
