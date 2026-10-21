@@ -17,10 +17,12 @@ spec:
       labels:
         app.kubernetes.io/name: wordpress
     spec:
+      securityContext:
+        fsGroup: 33
       initContainers:
         - name: fix-permissions
           image: busybox:1.36
-          command: ["sh", "-c", "chown -R 33:33 /var/www/html/wp-content && chmod -R 775 /var/www/html/wp-content"]
+          command: ["sh", "-c", "mkdir -p /var/www/html/wp-content/uploads && chown -R 33:33 /var/www/html/wp-content && chmod -R 775 /var/www/html/wp-content"]
           volumeMounts:
             - name: wp-content
               mountPath: /var/www/html/wp-content

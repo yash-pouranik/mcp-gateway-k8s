@@ -48,6 +48,11 @@ spec:
                 echo "WordPress core is already installed."
               fi
 
+              echo "Ensuring wp-content and uploads folder permissions..."
+              mkdir -p /var/www/html/wp-content/uploads
+              chown -R 33:33 /var/www/html/wp-content || true
+              chmod -R 775 /var/www/html/wp-content || true
+
               echo "Configuring permalink structure for REST API support..."
               wp rewrite structure '/index.php/%postname%/' --path=/var/www/html --hard
 

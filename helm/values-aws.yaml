@@ -1,6 +1,6 @@
 # ==============================================================================
 # Helm Environment Values — AWS EC2 Deployment (k3s single node cluster)
-# Server Public IP: 13.232.229.227
+# Server Public IP: 13.232.229.227 (TEMP)
 # ==============================================================================
 
 global:
