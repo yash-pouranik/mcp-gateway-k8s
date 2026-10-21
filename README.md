@@ -60,6 +60,48 @@ The entire platform is deployed live on a single-node AWS EC2 production Kuberne
 
 ## System Architecture
 
+```mermaid
+graph TD
+    subgraph Clients["Clients Layer"]
+        Browser["React Dashboard & AI Agent Studio"]
+        External["External Clients (Claude Code, Cursor, MCP Inspector)"]
+    end
+
+    subgraph Ingress["Ingress Controller (ingress-nginx)"]
+        IngressPublic["Public Ingress (TLS Termination)<br/>vynn.urbackend.in • store.urbackend.in"]
+    end
+
+    subgraph NSGateway["Namespace: gateway (Zero-Trust Default Deny)"]
+        Dashboard["Dashboard Nginx Pod (:80)"]
+        Gateway["Gateway Core Engine (:3000)<br/>• Streamable HTTP /mcp<br/>• Fast SHA-256 Auth<br/>• Granular RBAC Engine<br/>• SSRF Defense Whitelist<br/>• 15s Circuit Breaker"]
+        Postgres[("PostgreSQL 16<br/>(Users, API Keys, Audit Logs)")]
+    end
+
+    subgraph NSWooCommerce["Namespace: woocommerce (Zero-Trust Default Deny)"]
+        WooStore["WordPress 6.5 + WooCommerce 8.9"]
+        MariaDB[("MariaDB 11.4 StatefulSet")]
+        WooMCP["Custom WooCommerce MCP Server (:3000)<br/>Streamable HTTP • Internal ClusterIP"]
+    end
+
+    subgraph NSExtra["Namespace: extra-mcps (Zero-Trust Default Deny)"]
+        FakeStore["FakeStore MCP (:3000)"]
+        NotesMCP["Notes MCP (:3000)"]
+    end
+
+    Clients --> IngressPublic
+    IngressPublic --> Dashboard
+    IngressPublic --> Gateway
+    IngressPublic --> WooStore
+
+    Gateway --> Postgres
+    Gateway -.->|"Internal ClusterIP :3000"| WooMCP
+    Gateway -.->|"Internal ClusterIP :3000"| FakeStore
+    Gateway -.->|"Internal ClusterIP :3000"| NotesMCP
+
+    WooMCP -->|"Cluster DNS REST API"| WooStore
+    WooStore --> MariaDB
+```
+
 | Namespace | Workload | Type | Purpose |
 | :--- | :--- | :--- | :--- |
 | `woocommerce` | `wordpress` | Deployment (Apache) | WooCommerce storefront & WP-Admin (`store.localtest.me`) |
