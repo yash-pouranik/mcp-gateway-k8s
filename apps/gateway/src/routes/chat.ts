@@ -241,10 +241,44 @@ router.get('/usage', requireUserAuth, requireAdmin, async (_req: Request, res: R
   }
 });
 
+// Rate limiter state for protecting LLM credit budget (max 30 msgs per 10 mins per user/IP)
+const userChatLimits = new Map<string, { count: number; resetTime: number }>();
+
+function checkChatRateLimit(
+  key: string,
+  maxRequests = 30,
+  windowMs = 10 * 60 * 1000
+): { allowed: boolean; retryAfterSec?: number } {
+  const now = Date.now();
+  const record = userChatLimits.get(key);
+
+  if (!record || now > record.resetTime) {
+    userChatLimits.set(key, { count: 1, resetTime: now + windowMs });
+    return { allowed: true };
+  }
+
+  if (record.count >= maxRequests) {
+    const retryAfterSec = Math.ceil((record.resetTime - now) / 1000);
+    return { allowed: false, retryAfterSec };
+  }
+
+  record.count += 1;
+  return { allowed: true };
+}
+
 // ==========================================
 // 6. POST /api/chat — Multi-Turn Agent Loop with Persistence & Multi-Provider
 // ==========================================
 router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<void> => {
+  const actorKey = req.user?.id || req.ip || 'anonymous';
+  const rateLimit = checkChatRateLimit(actorKey, 30, 10 * 60 * 1000);
+  if (!rateLimit.allowed) {
+    res.status(429).json({
+      error: `Rate limit exceeded. To protect AI credits, maximum 30 messages allowed per 10 minutes. Please retry in ${rateLimit.retryAfterSec}s.`,
+    });
+    return;
+  }
+
   const { messages, stream, sessionId, provider: requestedProvider } = req.body;
   if (!Array.isArray(messages)) {
     res.status(400).json({ error: 'Messages array is required' });

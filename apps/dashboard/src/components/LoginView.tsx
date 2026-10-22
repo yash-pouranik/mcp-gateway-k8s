@@ -7,8 +7,8 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
-  const [email, setEmail] = useState('admin@mcp-platform.local');
-  const [password, setPassword] = useState('AdminPass123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -24,12 +24,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickFill = (userEmail: string, userPass: string) => {
-    setEmail(userEmail);
-    setPassword(userPass);
-    setError(null);
   };
 
   return (
@@ -100,35 +94,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </form>
-
-        <div className="mt-6 pt-4 border-t border-zinc-850">
-          <div className="text-[10px] text-zinc-500 font-mono mb-2">
-            Demo Credentials
-          </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleQuickFill('admin@mcp-platform.local', 'AdminPass123!')}
-              className="py-1 px-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-[11px] font-mono text-zinc-300 transition text-center"
-            >
-              Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickFill('member_a@mcp-platform.local', 'MemberPass123!')}
-              className="py-1 px-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-[11px] font-mono text-zinc-400 transition text-center"
-            >
-              Alice (A)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickFill('member_b@mcp-platform.local', 'MemberPass123!')}
-              className="py-1 px-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-[11px] font-mono text-zinc-400 transition text-center"
-            >
-              Bob (B)
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
