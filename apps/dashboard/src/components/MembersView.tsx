@@ -130,17 +130,17 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header with Sub-Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-zinc-850">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3 pb-3 sm:pb-4 border-b border-zinc-850">
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className="text-lg font-semibold text-white tracking-tight">Team Management</h1>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+            <h1 className="text-base sm:text-lg font-semibold text-white tracking-tight">Team Management</h1>
+            <span className="text-[10px] sm:text-xs font-mono px-1.5 sm:px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
               {members.length} {members.length === 1 ? 'member' : 'members'}
             </span>
           </div>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
             Authorized users, RBAC roles, and per-member token usage telemetry.
           </p>
         </div>
@@ -150,7 +150,7 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
           <div className="flex items-center bg-zinc-900 p-0.5 rounded-md border border-zinc-800 text-xs">
             <button
               onClick={() => setSubTab('roster')}
-              className={`px-2.5 py-1 rounded transition-colors ${
+              className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs transition-colors ${
                 subTab === 'roster' ? 'bg-zinc-800 text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
@@ -161,7 +161,7 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
                 setSubTab('usage');
                 loadUsage();
               }}
-              className={`px-2.5 py-1 rounded transition-colors ${
+              className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs transition-colors ${
                 subTab === 'usage' ? 'bg-zinc-800 text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
@@ -186,7 +186,7 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
                 setModalError(null);
                 setShowInviteModal(true);
               }}
-              className="px-3 py-1.5 rounded-md bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center space-x-1.5"
+              className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center space-x-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Invite Member</span>
@@ -204,11 +204,11 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
 
       {/* 1. Sub-Tab: Team Roster */}
       {subTab === 'roster' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {members.map((member) => (
             <div
               key={member.id}
-              className="p-4 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 rounded-lg transition space-y-3"
+              className="p-3 sm:p-4 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 rounded-lg transition space-y-2.5 sm:space-y-3"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-2.5">

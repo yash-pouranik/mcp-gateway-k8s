@@ -59,7 +59,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className={`text-zinc-100 flex flex-col font-sans selection:bg-orange-500/20 selection:text-orange-300 ${currentTab === 'chat' ? 'h-screen overflow-hidden bg-claude-bg' : 'min-h-screen bg-black'}`}>
+    <div className={`text-zinc-100 flex flex-col font-sans selection:bg-orange-500/20 selection:text-orange-300 ${currentTab === 'chat' ? 'h-[100dvh] overflow-hidden bg-claude-bg' : 'min-h-[100dvh] bg-black'}`}>
       <Navbar
         user={user}
         currentTab={currentTab}
@@ -67,7 +67,7 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
       />
 
-      <main className={`flex-1 w-full ${currentTab === 'chat' ? 'min-h-0 overflow-hidden p-0 flex flex-col' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7'}`}>
+      <main className={`flex-1 w-full ${currentTab === 'chat' ? 'min-h-0 overflow-hidden p-0 flex flex-col' : 'max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6'}`}>
         {currentTab === 'servers' && <ServersView user={user} />}
         {currentTab === 'keys' && <ApiKeysView user={user} />}
         {currentTab === 'audit' && <AuditLogView user={user} />}

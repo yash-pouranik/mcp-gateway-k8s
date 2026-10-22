@@ -282,6 +282,9 @@ export const ChatView: React.FC = () => {
   const handleNewChat = () => {
     handleStop();
     setCurrentSessionId(null);
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
     setMessages([
       {
         id: `welcome-${Date.now()}`,
@@ -295,6 +298,9 @@ export const ChatView: React.FC = () => {
 
   const handleSelectSession = async (session: ChatSessionSummary) => {
     if (loading) return;
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
     try {
       setLoading(true);
       const data = await api.getChatSession(session.id);
@@ -541,88 +547,95 @@ export const ChatView: React.FC = () => {
   }, [input]);
 
   return (
-    <div className="flex h-full w-full bg-[#1e1e1e] overflow-hidden">
+    <div className="flex h-full w-full bg-[#1e1e1e] overflow-hidden relative">
       {/* ------------------------------------------------------------- */}
-      {/* 1. Left Chat History Sidebar (Collapsible)                   */}
+      {/* 1. Left Chat History Sidebar (Collapsible Drawer on Mobile)  */}
       {/* ------------------------------------------------------------- */}
       {sidebarOpen && (
-        <aside className="w-72 bg-[#171717] border-r border-[#2d2d2d] flex flex-col flex-shrink-0 animate-in slide-in-from-left-4 duration-150 z-20">
-          <div className="p-3.5 border-b border-[#2d2d2d] flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <History className="w-4 h-4 text-cf-orange" />
-              <span className="text-xs font-semibold text-white tracking-tight">Chat History</span>
+        <>
+          {/* Mobile Backdrop */}
+          <div
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 bg-black/70 backdrop-blur-xs z-40 md:hidden"
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 w-72 md:relative md:w-64 lg:w-72 md:z-auto bg-[#171717] border-r border-[#2d2d2d] flex flex-col flex-shrink-0 shadow-2xl md:shadow-none animate-in slide-in-from-left-4 duration-150">
+            <div className="p-3.5 border-b border-[#2d2d2d] flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <History className="w-4 h-4 text-cf-orange" />
+                <span className="text-xs font-semibold text-white tracking-tight">Chat History</span>
+              </div>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition"
+                title="Close History Sidebar"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition"
-              title="Close History Sidebar"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
 
-          <div className="p-2.5">
-            <button
-              onClick={handleNewChat}
-              className="w-full flex items-center justify-center space-x-2 py-2 px-3 bg-[#242424] hover:bg-[#2b2b2b] border border-[#353535] hover:border-cf-orange/40 text-white rounded-xl text-xs font-medium transition shadow-sm"
-            >
-              <Plus className="w-3.5 h-3.5 text-cf-orange" />
-              <span>New Conversation</span>
-            </button>
-          </div>
+            <div className="p-2.5">
+              <button
+                onClick={handleNewChat}
+                className="w-full flex items-center justify-center space-x-2 py-2 px-3 bg-[#242424] hover:bg-[#2b2b2b] border border-[#353535] hover:border-cf-orange/40 text-white rounded-xl text-xs font-medium transition shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5 text-cf-orange" />
+                <span>New Conversation</span>
+              </button>
+            </div>
 
-          <div className="flex-1 overflow-y-auto px-2 space-y-1 custom-scrollbar">
-            {sessionsLoading ? (
-              <div className="text-center py-8 text-zinc-500 font-mono text-xs">
-                <Loader2 className="w-4 h-4 text-cf-orange animate-spin mx-auto mb-1.5" />
-                <span>Loading sessions...</span>
-              </div>
-            ) : sessions.length === 0 ? (
-              <div className="text-center py-8 text-zinc-500 text-xs font-sans px-4">
-                No saved chats yet. Start chatting with VYNN to save session history.
-              </div>
-            ) : (
-              sessions.map((sess) => {
-                const isActive = currentSessionId === sess.id;
-                return (
-                  <div
-                    key={sess.id}
-                    onClick={() => handleSelectSession(sess)}
-                    className={`group relative flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition text-xs ${
-                      isActive
-                        ? 'bg-[#262626] border border-cf-orange/50 text-white shadow-sm'
-                        : 'text-zinc-400 hover:text-white hover:bg-[#202020] border border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-start space-x-2 min-w-0 pr-2">
-                      <MessageSquare className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${isActive ? 'text-cf-orange' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
-                      <div className="min-w-0 truncate">
-                        <div className="truncate font-medium">{sess.title}</div>
-                        <div className="text-[10px] text-zinc-500 font-mono flex items-center space-x-1.5 mt-0.5">
-                          <span>{new Date(sess.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
-                          {sess.totalTokens > 0 && <span>· {sess.totalTokens} tokens</span>}
+            <div className="flex-1 overflow-y-auto px-2 space-y-1 custom-scrollbar">
+              {sessionsLoading ? (
+                <div className="text-center py-8 text-zinc-500 font-mono text-xs">
+                  <Loader2 className="w-4 h-4 text-cf-orange animate-spin mx-auto mb-1.5" />
+                  <span>Loading sessions...</span>
+                </div>
+              ) : sessions.length === 0 ? (
+                <div className="text-center py-8 text-zinc-500 text-xs font-sans px-4">
+                  No saved chats yet. Start chatting with VYNN to save session history.
+                </div>
+              ) : (
+                sessions.map((sess) => {
+                  const isActive = currentSessionId === sess.id;
+                  return (
+                    <div
+                      key={sess.id}
+                      onClick={() => handleSelectSession(sess)}
+                      className={`group relative flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition text-xs ${
+                        isActive
+                          ? 'bg-[#262626] border border-cf-orange/50 text-white shadow-sm'
+                          : 'text-zinc-400 hover:text-white hover:bg-[#202020] border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-start space-x-2 min-w-0 pr-2">
+                        <MessageSquare className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${isActive ? 'text-cf-orange' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
+                        <div className="min-w-0 truncate">
+                          <div className="truncate font-medium">{sess.title}</div>
+                          <div className="text-[10px] text-zinc-500 font-mono flex items-center space-x-1.5 mt-0.5">
+                            <span>{new Date(sess.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                            {sess.totalTokens > 0 && <span>· {sess.totalTokens} tokens</span>}
+                          </div>
                         </div>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteClick(e, sess)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                        title="Delete chat"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
+                  );
+                })
+              )}
+            </div>
 
-                    <button
-                      type="button"
-                      onClick={(e) => handleDeleteClick(e, sess)}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
-                      title="Delete chat"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <div className="p-3 border-t border-[#2d2d2d] bg-[#141414] text-[11px] font-mono text-zinc-500 text-center">
-            {sessions.length} conversation{sessions.length === 1 ? '' : 's'} stored
-          </div>
-        </aside>
+            <div className="p-2.5 border-t border-[#2d2d2d] bg-[#141414] text-[10px] sm:text-[11px] font-mono text-zinc-500 text-center">
+              {sessions.length} conversation{sessions.length === 1 ? '' : 's'} stored
+            </div>
+          </aside>
+        </>
       )}
 
       {/* ------------------------------------------------------------- */}
@@ -630,8 +643,8 @@ export const ChatView: React.FC = () => {
       {/* ------------------------------------------------------------- */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Top Studio Bar */}
-        <div className="px-5 py-2.5 bg-[#252525] border-b border-[#333333] flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center space-x-3">
+        <div className="px-3 sm:px-5 py-2 sm:py-2.5 bg-[#252525] border-b border-[#333333] flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className={`p-1.5 rounded-lg border transition flex items-center space-x-1.5 text-xs font-medium ${
@@ -645,27 +658,27 @@ export const ChatView: React.FC = () => {
               <span className="hidden sm:inline">History</span>
             </button>
 
-            <div className="w-7 h-7 rounded-lg bg-[#272727] border border-cf-orange/30 flex items-center justify-center p-1 shadow-sm">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#272727] border border-cf-orange/30 flex items-center justify-center p-1 shadow-sm shrink-0">
               <img src="/vynn_ai_logo.png" alt="VYNN Logo" className="w-full h-full object-contain drop-shadow" />
             </div>
 
             <div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1.5 sm:space-x-2">
                 <span className="text-xs font-semibold text-white tracking-tight">VYNN Studio</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-[10px] font-mono text-zinc-400">Autonomous Tool Loop Active</span>
+                <span className="text-[10px] font-mono text-zinc-400 hidden sm:inline">Autonomous Tool Loop Active</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
             <button
               onClick={handleNewChat}
-              className="px-2.5 py-1 text-zinc-400 hover:text-white hover:bg-[#303030] border border-transparent hover:border-[#404040] rounded-md transition text-xs flex items-center space-x-1.5 font-medium"
+              className="px-2 sm:px-2.5 py-1 text-zinc-400 hover:text-white hover:bg-[#303030] border border-transparent hover:border-[#404040] rounded-md transition text-xs flex items-center space-x-1 font-medium"
               title="New Chat / Reset Conversation"
             >
               <Plus className="w-3.5 h-3.5 text-cf-orange" />
-              <span>New Chat</span>
+              <span>New</span>
             </button>
           </div>
         </div>
@@ -841,20 +854,20 @@ export const ChatView: React.FC = () => {
         {/* ------------------------------------------------------------- */}
         {/* 3. Floating Bottom Claude Composer Dock with Provider Routing */}
         {/* ------------------------------------------------------------- */}
-        <div className="p-4 bg-gradient-to-t from-[#1e1e1e] via-[#1e1e1e]/95 to-transparent flex-shrink-0">
-          <div className="max-w-[820px] mx-auto space-y-3">
+        <div className="p-2 sm:p-4 bg-gradient-to-t from-[#1e1e1e] via-[#1e1e1e]/95 to-transparent flex-shrink-0">
+          <div className="max-w-[820px] mx-auto space-y-2 sm:space-y-3">
             {messages.length <= 2 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-500 flex items-center space-x-1 mr-1">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                <div className="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-zinc-500 flex items-center space-x-1 shrink-0 mr-1">
                   <Sparkles className="w-3 h-3 text-cf-orange" />
-                  <span>Suggestions:</span>
+                  <span className="hidden sm:inline">Suggestions:</span>
                 </div>
                 {samplePrompts.map((p, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleSend(p.prompt)}
-                    className="px-3 py-1 rounded-full bg-[#2b2b2b] hover:bg-[#333333] border border-[#3d3d3d] text-xs text-zinc-300 hover:text-white transition flex items-center space-x-1.5 group"
+                    className="px-2.5 py-1 rounded-full bg-[#2b2b2b] hover:bg-[#333333] border border-[#3d3d3d] text-[11px] sm:text-xs text-zinc-300 hover:text-white transition flex items-center space-x-1.5 shrink-0 whitespace-nowrap group"
                   >
                     <span>{p.title}</span>
                     <ArrowRight className="w-2.5 h-2.5 text-zinc-500 group-hover:text-cf-orange transition" />
@@ -864,7 +877,7 @@ export const ChatView: React.FC = () => {
             )}
 
             {/* Multiline Rounded Composer */}
-            <div className="relative bg-[#262626] hover:bg-[#282828] border border-[#3a3a3a] focus-within:border-cf-orange/70 rounded-2xl shadow-xl transition-all p-2.5">
+            <div className="relative bg-[#262626] hover:bg-[#282828] border border-[#3a3a3a] focus-within:border-cf-orange/70 rounded-xl sm:rounded-2xl shadow-xl transition-all p-2 sm:p-2.5">
               <textarea
                 ref={textareaRef}
                 rows={1}
@@ -873,24 +886,24 @@ export const ChatView: React.FC = () => {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Reply to VYNN or ask to manage WooCommerce store, products, or notes..."
-                className="w-full px-2.5 py-1.5 pr-12 bg-transparent text-[#f2f2f2] placeholder-zinc-500 text-[15px] leading-relaxed resize-none focus:outline-none disabled:opacity-50 max-h-[200px]"
+                className="w-full px-2 py-1 sm:px-2.5 sm:py-1.5 pr-10 sm:pr-12 bg-transparent text-[#f2f2f2] placeholder-zinc-500 text-sm sm:text-[15px] leading-relaxed resize-none focus:outline-none disabled:opacity-50 max-h-[140px] sm:max-h-[200px]"
               />
 
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 px-1 border-t border-[#313131]">
+              <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 pt-1.5 sm:pt-2 px-1 border-t border-[#313131]">
                 {/* Provider Selector Dock (Custom Kumo Popover) */}
                 <div className="flex items-center space-x-2">
                   <div className="relative" ref={providerDropdownRef}>
                     <button
                       type="button"
                       onClick={() => setProviderDropdownOpen(!providerDropdownOpen)}
-                      className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-[#1e1e1e] hover:bg-[#252525] border transition text-[11px] font-mono ${
+                      className={`flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-[#1e1e1e] hover:bg-[#252525] border transition text-[10px] sm:text-[11px] font-mono ${
                         providerDropdownOpen
                           ? 'border-cf-orange/70 text-white shadow-sm'
                           : 'border-[#383838] text-zinc-300 hover:text-white'
                       }`}
                     >
                       <Cpu className="w-3 h-3 text-cf-orange flex-shrink-0" />
-                      <span className="truncate max-w-[200px]">
+                      <span className="truncate max-w-[120px] sm:max-w-[200px]">
                         {selectedProvider === 'auto'
                           ? '⚡ Auto Router'
                           : providers.find((p) => p.name === selectedProvider)?.displayName || selectedProvider}

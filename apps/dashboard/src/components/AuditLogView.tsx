@@ -267,6 +267,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
   // Pagination
   const pageSize = 50;
   const [currentPage, setCurrentPage] = useState(1);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // Reference data for filter dropdowns
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -336,6 +337,14 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
     filterUserId || filterServerId || filterStatus || filterSearch || filterStartDate || filterEndDate
   );
 
+  const activeFilterCount =
+    (filterUserId ? 1 : 0) +
+    (filterServerId ? 1 : 0) +
+    (filterStatus ? 1 : 0) +
+    (filterStartDate ? 1 : 0) +
+    (filterEndDate ? 1 : 0) +
+    (filterSearch ? 1 : 0);
+
   const clearFilters = () => {
     setFilterUserId('');
     setFilterServerId('');
@@ -351,17 +360,17 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-850">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 pb-3 border-b border-zinc-850">
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className="text-lg font-semibold text-white tracking-tight">Audit Log</h1>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+            <h1 className="text-base sm:text-lg font-semibold text-white tracking-tight">Audit Log</h1>
+            <span className="text-[10px] sm:text-xs font-mono px-1.5 sm:px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
               {total} events
             </span>
           </div>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
             Immutable log of all tool invocations, durations, and authorization outcomes.
           </p>
         </div>
@@ -369,7 +378,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
         <button
           onClick={() => fetchLogs(currentPage)}
           disabled={loading}
-          className="px-2.5 py-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition flex items-center space-x-1.5 text-xs font-medium self-start sm:self-auto"
+          className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition flex items-center space-x-1.5 text-xs font-medium self-start sm:self-auto"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-cf-orange' : ''}`} />
           <span>Refresh</span>
@@ -377,8 +386,49 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
       </div>
 
       {/* Filter Bar */}
-      <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-lg">
-        <div className="flex flex-wrap items-end gap-3">
+      <div className="p-2.5 sm:p-3 bg-zinc-950 border border-zinc-800 rounded-lg">
+        {/* Mobile Top Controls: Search + Filter Toggle */}
+        <div className="flex sm:hidden items-center space-x-2">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Search tool or error..."
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              className="w-full px-2.5 py-1.5 pl-7 bg-zinc-900 border border-zinc-800 rounded-md text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-700 font-mono"
+            />
+            <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2 top-2 pointer-events-none" />
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            className={`px-2.5 py-1.5 text-xs font-medium rounded-md border transition flex items-center space-x-1.5 shrink-0 ${
+              showMobileFilters || activeFilterCount > 0
+                ? 'bg-zinc-800 border-zinc-700 text-white'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-400'
+            }`}
+          >
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="w-4 h-4 rounded-full bg-cf-orange text-white text-[10px] font-mono flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="p-1.5 text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800 rounded-md"
+              title="Reset"
+            >
+              <X className="w-3.5 h-3.5 text-cf-orange" />
+            </button>
+          )}
+        </div>
+
+        {/* Filters Dropdown / Row (Always visible on desktop, toggleable on mobile) */}
+        <div className={`${showMobileFilters ? 'flex' : 'hidden'} sm:flex flex-wrap items-end gap-2.5 sm:gap-3 mt-2 sm:mt-0`}>
           {/* User Filter (admin only) */}
           {isAdmin && (
             <MinimalSelect
@@ -386,7 +436,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
               value={filterUserId}
               options={[{ value: '', label: 'All users' }, ...members.map((m) => ({ value: m.id, label: m.name, sublabel: m.email }))]}
               onChange={setFilterUserId}
-              widthClass="w-36"
+              widthClass="w-full sm:w-36"
             />
           )}
 
@@ -396,7 +446,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
             value={filterServerId}
             options={[{ value: '', label: 'All servers' }, ...servers.map((s) => ({ value: s.id, label: s.name, sublabel: s.slug }))]}
             onChange={setFilterServerId}
-            widthClass="w-36"
+            widthClass="w-full sm:w-36"
           />
 
           {/* Status Filter */}
@@ -409,7 +459,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
               { value: 'false', label: 'Failures only' },
             ]}
             onChange={(val) => setFilterStatus(val as '' | 'true' | 'false')}
-            widthClass="w-32"
+            widthClass="w-full sm:w-32"
           />
 
           {/* Date Range */}
@@ -422,8 +472,8 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
             }}
           />
 
-          {/* Search Box */}
-          <div className="flex flex-col flex-1 min-w-[12rem]">
+          {/* Search Box (Desktop) */}
+          <div className="hidden sm:flex flex-col flex-1 min-w-[12rem]">
             <span className="text-[11px] text-zinc-400 font-medium mb-1">Search</span>
             <div className="relative">
               <input
@@ -437,9 +487,9 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
             </div>
           </div>
 
-          {/* Clear Filters */}
+          {/* Clear Filters (Desktop) */}
           {hasActiveFilters && (
-            <div className="pb-0.5">
+            <div className="hidden sm:block pb-0.5">
               <button
                 type="button"
                 onClick={clearFilters}
@@ -460,14 +510,15 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
         </div>
       )}
 
-      {/* Table */}
+      {/* Table Container */}
       <div className="border border-zinc-800 bg-zinc-950 rounded-lg overflow-hidden">
-        <div className="px-4 py-2 border-b border-zinc-800 flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+        <div className="px-3 sm:px-4 py-2 border-b border-zinc-800 flex items-center justify-between text-[10px] sm:text-[11px] text-zinc-500 font-mono">
           <span>{total} total records</span>
           <span>Showing {showingStart}–{showingEnd}</span>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* 1. Desktop Table View (Hidden on mobile) */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="min-w-full text-left text-xs">
             <thead className="bg-zinc-900/50 text-zinc-400 font-mono text-[11px] border-b border-zinc-800">
               <tr>
@@ -613,27 +664,119 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
           </table>
         </div>
 
+        {/* 2. Mobile Card List View (Visible on phone) */}
+        <div className="block sm:hidden divide-y divide-zinc-850">
+          {loading ? (
+            <div className="p-8 text-center text-zinc-500 font-mono text-xs">
+              Loading audit records...
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="p-8 text-center text-zinc-500 text-xs font-mono">
+              No audit records match the selected filters.
+            </div>
+          ) : (
+            logs.map((log) => {
+              const isExpanded = expandedId === log.id;
+              return (
+                <div key={log.id} className="p-3 hover:bg-zinc-900/30 transition">
+                  <div
+                    className="flex items-start justify-between cursor-pointer select-none"
+                    onClick={() => toggleExpand(log.id)}
+                  >
+                    <div className="space-y-1 min-w-0 pr-2">
+                      <div className="flex items-center space-x-1.5">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                            log.success ? 'bg-emerald-400' : 'bg-rose-500'
+                          }`}
+                        />
+                        <span className="font-mono text-xs font-semibold text-white truncate">
+                          {log.toolName}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-1.5 text-[10px] text-zinc-400 font-mono truncate">
+                        <span className="text-zinc-300 font-sans">{log.user?.name || 'Unauth'}</span>
+                        <span className="text-zinc-600">·</span>
+                        <span className="truncate">{log.server?.name || 'Internal'}</span>
+                        <span className="text-zinc-600">·</span>
+                        <span className="text-zinc-500">{log.durationMs}ms</span>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="text-[10px] font-mono text-zinc-500">
+                        {new Date(log.calledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <span
+                        className={`inline-block mt-0.5 text-[10px] font-mono px-1 py-0.2 rounded ${
+                          log.success ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
+                      >
+                        {log.success ? '200' : 'ERR'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="mt-2.5 pt-2 border-t border-zinc-900 text-xs font-mono space-y-2">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-zinc-500">
+                        <span>ID: {log.id.slice(0, 8)}</span>
+                        <span>·</span>
+                        <span>{new Date(log.calledAt).toLocaleString()}</span>
+                      </div>
+
+                      {log.errorMsg && (
+                        <div className="p-2 bg-rose-950/20 border border-rose-900/40 rounded text-rose-300 text-[11px] break-all">
+                          {log.errorMsg}
+                        </div>
+                      )}
+
+                      <div>
+                        <div className="text-[10px] text-zinc-500 mb-0.5">Parameters</div>
+                        <pre className="p-2 bg-black rounded text-[10px] text-zinc-300 overflow-x-auto border border-zinc-900 max-h-36">
+                          {JSON.stringify(log.inputSummary?.parameters || log.inputSummary, null, 2)}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <div className="text-[10px] text-zinc-500 mb-0.5">Response</div>
+                        <pre className="p-2 bg-black rounded text-[10px] text-zinc-300 overflow-x-auto border border-zinc-900 max-h-36">
+                          {log.inputSummary?.response !== undefined
+                            ? JSON.stringify(log.inputSummary.response, null, 2)
+                            : log.success
+                            ? JSON.stringify({ status: 'Success' }, null, 2)
+                            : JSON.stringify({ status: 'Failed', error: log.errorMsg }, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
         {/* Pagination */}
         {total > pageSize && (
-          <div className="px-4 py-2.5 bg-zinc-900/30 border-t border-zinc-800 flex items-center justify-between text-xs font-mono">
-            <span className="text-zinc-500">
+          <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-zinc-900/30 border-t border-zinc-800 flex items-center justify-between text-xs font-mono">
+            <span className="text-zinc-500 text-[11px]">
               Page {currentPage} of {totalPages}
             </span>
             <div className="flex items-center space-x-1.5">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage <= 1}
-                className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center space-x-1"
+                className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center space-x-1 text-xs"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Prev</span>
+                <span className="hidden sm:inline">Prev</span>
               </button>
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage >= totalPages}
-                className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center space-x-1"
+                className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center space-x-1 text-xs"
               >
-                <span>Next</span>
+                <span className="hidden sm:inline">Next</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>

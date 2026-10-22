@@ -174,20 +174,20 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
   const totalToolsCount = servers.reduce((acc, s) => acc + (s.tools?.length || 0), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-850">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 pb-3 sm:pb-4 border-b border-zinc-850">
         <div>
-          <div className="flex items-center space-x-2">
-            <h1 className="text-lg font-semibold text-white tracking-tight">Upstream Servers</h1>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <h1 className="text-base sm:text-lg font-semibold text-white tracking-tight">Upstream Servers</h1>
+            <span className="text-[10px] sm:text-xs font-mono px-1.5 sm:px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
               {servers.length} registered
             </span>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-850 text-cf-orange">
+            <span className="text-[10px] sm:text-xs font-mono px-1.5 sm:px-2 py-0.5 rounded bg-zinc-900 border border-zinc-850 text-cf-orange">
               {totalToolsCount} tools live
             </span>
           </div>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
             Upstream tool providers aggregated behind the authenticated endpoint (<code className="text-zinc-300 font-mono">/mcp</code>).
           </p>
         </div>
@@ -196,7 +196,7 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
           <button
             onClick={fetchServers}
             disabled={loading}
-            className="px-2.5 py-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition flex items-center space-x-1.5 text-xs font-medium"
+            className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 transition flex items-center space-x-1.5 text-xs font-medium"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-cf-orange' : ''}`} />
             <span>Sync</span>
@@ -204,7 +204,7 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
           {(!user || user.role === 'admin') && (
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="px-3 py-1.5 rounded-md bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center space-x-1.5"
+              className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md bg-cf-orange hover:bg-cf-hover active:bg-cf-dark text-white font-medium text-xs transition flex items-center space-x-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Upstream</span>
@@ -224,7 +224,7 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
           Querying cluster MCP registries...
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {servers.map((server) => {
             const isConnected = server.status === 'connected';
             const isDisabled = !server.enabled || server.status === 'disabled';
@@ -232,7 +232,7 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
             return (
               <div
                 key={server.id}
-                className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 flex flex-col justify-between space-y-4 hover:border-zinc-700 transition"
+                className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 sm:p-4 flex flex-col justify-between space-y-3 sm:space-y-4 hover:border-zinc-700 transition"
               >
                 <div className="space-y-3">
                   {/* Card Header: Title & Status */}

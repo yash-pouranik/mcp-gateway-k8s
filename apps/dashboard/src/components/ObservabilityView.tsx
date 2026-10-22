@@ -83,12 +83,12 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({ user: _use
   const hasErrors = (hist?.errorRatePercentage || 0) > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 1. Header Bar with Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-zinc-850">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3 pb-3 sm:pb-4 border-b border-zinc-850">
         <div>
-          <h1 className="text-lg font-semibold text-white tracking-tight">Observability</h1>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <h1 className="text-base sm:text-lg font-semibold text-white tracking-tight">Observability</h1>
+          <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
             RED method telemetry, upstream health, and request latency percentiles.
           </p>
         </div>
@@ -101,7 +101,7 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({ user: _use
               <button
                 key={w}
                 onClick={() => setTimeWindow(w)}
-                className={`px-2.5 py-1 rounded transition-colors ${
+                className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded text-[11px] sm:text-xs transition-colors ${
                   timeWindow === w
                     ? 'bg-zinc-800 text-white font-medium'
                     : 'text-zinc-400 hover:text-zinc-200'
@@ -115,7 +115,7 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({ user: _use
           {/* Auto Refresh Toggle */}
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md border text-xs font-mono transition ${
+            className={`flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 rounded-md border text-[11px] sm:text-xs font-mono transition ${
               autoRefresh
                 ? 'bg-zinc-900 text-zinc-300 border-zinc-700'
                 : 'bg-zinc-950 text-zinc-500 border-zinc-850 hover:text-zinc-300'
@@ -152,79 +152,79 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({ user: _use
       )}
 
       {/* 2. Compact KPI Summary Strip (Grafana / Datadog style) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 border border-zinc-800 bg-zinc-950 rounded-lg divide-y lg:divide-y-0 lg:divide-x divide-zinc-800">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-zinc-800 border border-zinc-800 rounded-lg overflow-hidden">
         {/* Metric 1: Rate (Requests) */}
-        <div className="p-4 flex flex-col justify-between">
-          <div className="text-xs text-zinc-400 font-medium">Requests</div>
-          <div className="my-2">
-            <div className="text-2xl font-semibold font-mono text-white tracking-tight">
+        <div className="bg-zinc-950 p-2.5 sm:p-4 flex flex-col justify-between">
+          <div className="text-[11px] sm:text-xs text-zinc-400 font-medium">Requests</div>
+          <div className="my-1 sm:my-2">
+            <div className="text-lg sm:text-2xl font-semibold font-mono text-white tracking-tight">
               {hist?.totalCalls.toLocaleString() || 0}
             </div>
-            <div className="text-[11px] text-zinc-500 font-mono mt-0.5">Calls in {timeWindow}</div>
+            <div className="text-[10px] sm:text-[11px] text-zinc-500 font-mono mt-0.5">Calls in {timeWindow}</div>
           </div>
-          <div className="text-[11px] font-mono text-zinc-400 flex items-center justify-between pt-2 border-t border-zinc-900">
+          <div className="text-[10px] sm:text-[11px] font-mono text-zinc-400 flex items-center justify-between pt-1.5 sm:pt-2 border-t border-zinc-900">
             <span className="text-zinc-500">In-flight active</span>
             <span className="text-zinc-200">{proc?.activeRequests || 0}</span>
           </div>
         </div>
 
         {/* Metric 2: Error Rate */}
-        <div className="p-4 flex flex-col justify-between">
-          <div className="text-xs text-zinc-400 font-medium">Error rate</div>
-          <div className="my-2">
+        <div className="bg-zinc-950 p-2.5 sm:p-4 flex flex-col justify-between">
+          <div className="text-[11px] sm:text-xs text-zinc-400 font-medium">Error rate</div>
+          <div className="my-1 sm:my-2">
             <div
-              className={`text-2xl font-semibold font-mono tracking-tight ${
+              className={`text-lg sm:text-2xl font-semibold font-mono tracking-tight ${
                 hasErrors ? 'text-rose-400' : 'text-zinc-100'
               }`}
             >
               {hist?.errorRatePercentage ?? 0}%
             </div>
-            <div className="text-[11px] text-zinc-500 font-mono mt-0.5">
+            <div className="text-[10px] sm:text-[11px] text-zinc-500 font-mono mt-0.5">
               {hist?.errorCalls || 0} failed / {hist?.totalCalls || 0} total
             </div>
           </div>
-          <div className="text-[11px] font-mono text-zinc-400 flex items-center justify-between pt-2 border-t border-zinc-900">
+          <div className="text-[10px] sm:text-[11px] font-mono text-zinc-400 flex items-center justify-between pt-1.5 sm:pt-2 border-t border-zinc-900">
             <span className="text-zinc-500">Auth / RBAC rejections</span>
             <span className="text-zinc-200">{proc?.processLifetimeAuthFailures || 0}</span>
           </div>
         </div>
 
         {/* Metric 3: Duration (p95 Latency) */}
-        <div className="p-4 flex flex-col justify-between">
-          <div className="text-xs text-zinc-400 font-medium">p95 Latency</div>
-          <div className="my-2">
-            <div className="text-2xl font-semibold font-mono text-white tracking-tight">
+        <div className="bg-zinc-950 p-2.5 sm:p-4 flex flex-col justify-between">
+          <div className="text-[11px] sm:text-xs text-zinc-400 font-medium">p95 Latency</div>
+          <div className="my-1 sm:my-2">
+            <div className="text-lg sm:text-2xl font-semibold font-mono text-white tracking-tight">
               {hist?.latencyMs.p95 || 0}
               <span className="text-xs font-normal text-zinc-500 ml-1">ms</span>
             </div>
-            <div className="text-[11px] text-zinc-500 font-mono mt-0.5">
+            <div className="text-[10px] sm:text-[11px] text-zinc-500 font-mono mt-0.5">
               Average {hist?.latencyMs.average || 0} ms
             </div>
           </div>
-          <div className="text-[11px] font-mono text-zinc-400 flex items-center justify-between pt-2 border-t border-zinc-900">
-            <span className="text-zinc-500">p50 / p90 / p99</span>
+          <div className="text-[10px] sm:text-[11px] font-mono text-zinc-400 flex items-center justify-between pt-1.5 sm:pt-2 border-t border-zinc-900">
+            <span className="text-zinc-500">p50 / p90</span>
             <span className="text-zinc-300">
-              {hist?.latencyMs.p50} / {hist?.latencyMs.p90} / {hist?.latencyMs.p99}
+              {hist?.latencyMs.p50} / {hist?.latencyMs.p90}
             </span>
           </div>
         </div>
 
         {/* Metric 4: Upstreams Health */}
-        <div className="p-4 flex flex-col justify-between">
-          <div className="text-xs text-zinc-400 font-medium">Upstream status</div>
-          <div className="my-2">
-            <div className="text-2xl font-semibold font-mono text-white tracking-tight flex items-center space-x-2">
+        <div className="bg-zinc-950 p-2.5 sm:p-4 flex flex-col justify-between">
+          <div className="text-[11px] sm:text-xs text-zinc-400 font-medium">Upstream status</div>
+          <div className="my-1 sm:my-2">
+            <div className="text-lg sm:text-2xl font-semibold font-mono text-white tracking-tight flex items-center space-x-1.5">
               <span>{healthyCount}/{totalEnabled}</span>
-              <span className="text-xs font-sans font-medium text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+              <span className="text-[10px] sm:text-xs font-sans font-medium text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
                 Connected
               </span>
             </div>
-            <div className="text-[11px] text-zinc-500 font-mono mt-0.5">
+            <div className="text-[10px] sm:text-[11px] text-zinc-500 font-mono mt-0.5">
               {upstreams.length - totalEnabled} disabled
             </div>
           </div>
-          <div className="text-[11px] font-mono text-zinc-400 flex items-center justify-between pt-2 border-t border-zinc-900">
-            <span className="text-zinc-500">Process uptime</span>
+          <div className="text-[10px] sm:text-[11px] font-mono text-zinc-400 flex items-center justify-between pt-1.5 sm:pt-2 border-t border-zinc-900">
+            <span className="text-zinc-500">Uptime</span>
             <span className="text-zinc-200">
               {Math.floor((proc?.uptimeSeconds || 0) / 3600)}h {Math.floor(((proc?.uptimeSeconds || 0) % 3600) / 60)}m
             </span>
@@ -234,15 +234,15 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({ user: _use
 
       {/* 3. Upstream Runtime Status Matrix */}
       <div className="border border-zinc-800 bg-zinc-950 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-zinc-800 flex items-center justify-between">
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
             <h2 className="text-xs font-semibold text-zinc-200 tracking-tight">Upstream Servers Runtime Matrix</h2>
-            <span className="text-[11px] font-mono text-zinc-500">· 15s timeout boundary</span>
+            <span className="text-[10px] sm:text-[11px] font-mono text-zinc-500">· 15s timeout</span>
           </div>
-          <span className="text-[11px] font-mono text-zinc-500">Synced at {lastRefreshedAt}</span>
+          <span className="text-[10px] sm:text-[11px] font-mono text-zinc-500">Synced at {lastRefreshedAt}</span>
         </div>
 
-        <div className="divide-y divide-zinc-850">
+        <div className="overflow-x-auto">
           <table className="min-w-full text-left text-xs">
             <thead className="bg-zinc-900/50 text-zinc-400 font-mono text-[11px]">
               <tr>

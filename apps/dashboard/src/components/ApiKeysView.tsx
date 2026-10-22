@@ -146,93 +146,149 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
         <div className="p-16 text-center text-zinc-500 font-mono text-xs">Loading API keys...</div>
       ) : (
         <div className="border border-zinc-800 bg-zinc-950 rounded-lg overflow-hidden">
-          <table className="min-w-full text-left text-xs">
-            <thead className="bg-zinc-900/50 text-zinc-400 font-mono text-[11px] border-b border-zinc-800">
-              <tr>
-                <th className="px-4 py-2.5 font-medium">Name</th>
-                {scope === 'team' && (
-                  <th className="px-4 py-2.5 font-medium">Owner</th>
-                )}
-                <th className="px-4 py-2.5 font-medium">Key Prefix</th>
-                <th className="px-4 py-2.5 font-medium">Usage</th>
-                <th className="px-4 py-2.5 font-medium">Status</th>
-                <th className="px-4 py-2.5 font-medium">Created</th>
-                <th className="px-4 py-2.5 font-medium text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-850">
-              {keys.length === 0 ? (
+          {/* Desktop Table */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="min-w-full text-left text-xs">
+              <thead className="bg-zinc-900/50 text-zinc-400 font-mono text-[11px] border-b border-zinc-800">
                 <tr>
-                  <td colSpan={scope === 'team' ? 7 : 6} className="px-4 py-12 text-center text-zinc-500 text-xs font-mono">
-                    No API keys issued yet. Generate a key to connect Claude Code, Cursor, or Postman.
-                  </td>
+                  <th className="px-4 py-2.5 font-medium">Name</th>
+                  {scope === 'team' && (
+                    <th className="px-4 py-2.5 font-medium">Owner</th>
+                  )}
+                  <th className="px-4 py-2.5 font-medium">Key Prefix</th>
+                  <th className="px-4 py-2.5 font-medium">Usage</th>
+                  <th className="px-4 py-2.5 font-medium">Status</th>
+                  <th className="px-4 py-2.5 font-medium">Created</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Action</th>
                 </tr>
-              ) : (
-                keys.map((k) => {
-                  const isRevoked = Boolean(k.revokedAt);
-                  const isOwner = k.userId === user?.id;
-                  const canRevoke = isAdmin || isOwner;
+              </thead>
+              <tbody className="divide-y divide-zinc-850">
+                {keys.length === 0 ? (
+                  <tr>
+                    <td colSpan={scope === 'team' ? 7 : 6} className="px-4 py-12 text-center text-zinc-500 text-xs font-mono">
+                      No API keys issued yet. Generate a key to connect Claude Code, Cursor, or Postman.
+                    </td>
+                  </tr>
+                ) : (
+                  keys.map((k) => {
+                    const isRevoked = Boolean(k.revokedAt);
+                    const isOwner = k.userId === user?.id;
+                    const canRevoke = isAdmin || isOwner;
 
-                  return (
-                    <tr key={k.id} className="hover:bg-zinc-900/30 transition-colors">
-                      <td className="px-4 py-3 font-medium text-white">
-                        {k.name}
-                      </td>
+                    return (
+                      <tr key={k.id} className="hover:bg-zinc-900/30 transition-colors">
+                        <td className="px-4 py-3 font-medium text-white">
+                          {k.name}
+                        </td>
 
-                      {scope === 'team' && (
+                        {scope === 'team' && (
+                          <td className="px-4 py-3">
+                            {k.user ? (
+                              <div className="flex items-center space-x-1.5">
+                                <span className="text-zinc-200">{k.user.name}</span>
+                                <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">
+                                  {k.user.role}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-zinc-600 font-mono text-[11px]">—</span>
+                            )}
+                          </td>
+                        )}
+
+                        <td className="px-4 py-3 font-mono text-zinc-300">
+                          {k.keyPrefix}••••••••
+                        </td>
+                        <td className="px-4 py-3 font-mono text-zinc-400">
+                          {k.callCount || 0} calls
+                        </td>
                         <td className="px-4 py-3">
-                          {k.user ? (
-                            <div className="flex items-center space-x-1.5">
-                              <span className="text-zinc-200">{k.user.name}</span>
-                              <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">
-                                {k.user.role}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-zinc-600 font-mono text-[11px]">—</span>
+                          <span className="inline-flex items-center space-x-1.5 text-xs">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isRevoked ? 'bg-zinc-600' : 'bg-emerald-400'
+                              }`}
+                            />
+                            <span className={isRevoked ? 'text-zinc-500 font-sans' : 'text-zinc-300 font-sans'}>
+                              {isRevoked ? 'Revoked' : 'Active'}
+                            </span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-[11px] text-zinc-500 font-mono">
+                          {new Date(k.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {!isRevoked && canRevoke && (
+                            <button
+                              onClick={() => setRevokingKey(k)}
+                              className="text-xs text-zinc-400 hover:text-rose-400 font-medium inline-flex items-center space-x-1 px-2 py-1 rounded hover:bg-zinc-900 transition"
+                              title="Revoke key"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Revoke</span>
+                            </button>
                           )}
                         </td>
-                      )}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
-                      <td className="px-4 py-3 font-mono text-zinc-300">
-                        {k.keyPrefix}••••••••
-                      </td>
-                      <td className="px-4 py-3 font-mono text-zinc-400">
-                        {k.callCount || 0} calls
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center space-x-1.5 text-xs">
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              isRevoked ? 'bg-zinc-600' : 'bg-emerald-400'
-                            }`}
-                          />
-                          <span className={isRevoked ? 'text-zinc-500 font-sans' : 'text-zinc-300 font-sans'}>
-                            {isRevoked ? 'Revoked' : 'Active'}
-                          </span>
+          {/* Mobile Cards */}
+          <div className="block sm:hidden divide-y divide-zinc-850">
+            {keys.length === 0 ? (
+              <div className="p-8 text-center text-zinc-500 text-xs font-mono">
+                No API keys issued yet. Generate a key to connect Claude Code, Cursor, or Postman.
+              </div>
+            ) : (
+              keys.map((k) => {
+                const isRevoked = Boolean(k.revokedAt);
+                const isOwner = k.userId === user?.id;
+                const canRevoke = isAdmin || isOwner;
+
+                return (
+                  <div key={k.id} className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium text-xs text-white truncate mr-2">
+                        {k.name}
+                      </div>
+                      <span className="inline-flex items-center space-x-1.5 text-[11px] shrink-0">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isRevoked ? 'bg-zinc-600' : 'bg-emerald-400'
+                          }`}
+                        />
+                        <span className={isRevoked ? 'text-zinc-500' : 'text-zinc-300'}>
+                          {isRevoked ? 'Revoked' : 'Active'}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-[11px] text-zinc-500 font-mono">
-                        {new Date(k.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {!isRevoked && canRevoke && (
-                          <button
-                            onClick={() => setRevokingKey(k)}
-                            className="text-xs text-zinc-400 hover:text-rose-400 font-medium inline-flex items-center space-x-1 px-2 py-1 rounded hover:bg-zinc-900 transition"
-                            title="Revoke key"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Revoke</span>
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                      <span>{k.keyPrefix}••••••••</span>
+                      <span className="text-zinc-500">{k.callCount || 0} calls</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-zinc-500 pt-1 border-t border-zinc-900">
+                      <span>{new Date(k.createdAt).toLocaleDateString()}</span>
+                      {!isRevoked && canRevoke && (
+                        <button
+                          onClick={() => setRevokingKey(k)}
+                          className="text-xs text-rose-400 hover:text-rose-300 font-medium inline-flex items-center space-x-1 px-1.5 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 transition"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Revoke</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
 
