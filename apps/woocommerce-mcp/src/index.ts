@@ -550,60 +550,6 @@ export const TOOLS: Tool[] = [
         }
       }
     }
-  },
-  {
-    name: 'create_customer',
-    description: 'Register a new customer account in the WooCommerce store with email, name, username, and optional billing/shipping addresses.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        email: {
-          type: 'string',
-          description: 'Customer email address (required)'
-        },
-        first_name: {
-          type: 'string',
-          description: 'Customer first name'
-        },
-        last_name: {
-          type: 'string',
-          description: 'Customer last name'
-        },
-        username: {
-          type: 'string',
-          description: 'Username for the customer (optional, defaults to email username)'
-        },
-        billing: {
-          type: 'object',
-          properties: {
-            first_name: { type: 'string' },
-            last_name: { type: 'string' },
-            address_1: { type: 'string' },
-            city: { type: 'string' },
-            state: { type: 'string' },
-            postcode: { type: 'string' },
-            country: { type: 'string' },
-            email: { type: 'string' },
-            phone: { type: 'string' }
-          },
-          description: 'Billing address object'
-        },
-        shipping: {
-          type: 'object',
-          properties: {
-            first_name: { type: 'string' },
-            last_name: { type: 'string' },
-            address_1: { type: 'string' },
-            city: { type: 'string' },
-            state: { type: 'string' },
-            postcode: { type: 'string' },
-            country: { type: 'string' }
-          },
-          description: 'Shipping address object'
-        }
-      },
-      required: ['email']
-    }
   }
 ];
 
@@ -812,28 +758,6 @@ export async function executeTool(name: string, args: Record<string, any> = {}) 
           {
             type: 'text',
             text: JSON.stringify(customers, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'create_customer': {
-      if (!args.email || !String(args.email).includes('@')) {
-        throw new Error("Validation Guardrail Violation: A valid 'email' is required to register a customer.");
-      }
-      const customer = await wcClient.createCustomer({
-        email: String(args.email).trim().toLowerCase(),
-        first_name: args.first_name ? String(args.first_name).trim() : undefined,
-        last_name: args.last_name ? String(args.last_name).trim() : undefined,
-        username: args.username ? String(args.username).trim() : undefined,
-        billing: args.billing,
-        shipping: args.shipping
-      });
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(customer, null, 2)
           }
         ]
       };

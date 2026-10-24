@@ -68,6 +68,12 @@ spec:
               echo "Enabling Cash on Delivery (COD) payment gateway..."
               wp option update woocommerce_cod_settings '{"enabled":"yes","title":"Cash on delivery","description":"Pay with cash upon delivery.","instructions":"","enable_for_methods":[],"enable_for_virtual":"yes"}' --format=json --path=/var/www/html
 
+              echo "Enabling Customer Signup & Registration on WooCommerce My Account / Login page..."
+              wp option update users_can_register 1 --path=/var/www/html
+              wp option update woocommerce_enable_myaccount_registration 'yes' --path=/var/www/html
+              wp option update woocommerce_registration_generate_username 'no' --path=/var/www/html
+              wp option update woocommerce_registration_generate_password 'no' --path=/var/www/html
+
               echo "Provisioning WooCommerce REST API keys for MCP Gateway..."
               wp eval --path=/var/www/html '
               global $wpdb;

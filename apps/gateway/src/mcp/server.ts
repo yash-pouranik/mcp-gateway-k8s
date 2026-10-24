@@ -19,7 +19,6 @@ export const RESTRICTED_ADMIN_TOOLS = new Set([
   'woocommerce__delete_product',
   'woocommerce__update_order_status',
   'woocommerce__update_order',
-  'woocommerce__create_customer',
   'notes__create_note',
   'notes__update_note',
   'notes__delete_note',

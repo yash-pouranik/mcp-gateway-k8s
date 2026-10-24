@@ -215,16 +215,6 @@ export function evaluateToolGuardrails(
     }
   }
 
-  // 7. Customer Creation Email Validation
-  if (cleanTool === 'create_customer') {
-    if (!args.email || typeof args.email !== 'string' || !args.email.includes('@')) {
-      return {
-        allowed: false,
-        rejectionReason: `Validation Guardrail Violation: A valid email address is required to create a customer.`
-      };
-    }
-  }
-
   return { allowed: true };
 }
 

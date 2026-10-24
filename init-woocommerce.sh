@@ -35,6 +35,12 @@ kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.p
 echo "💳 Enabling Cash on Delivery (COD)..."
 kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.phar option update woocommerce_cod_settings '{"enabled":"yes","title":"Cash on delivery","description":"Pay with cash upon delivery.","instructions":"","enable_for_methods":[],"enable_for_virtual":"yes"}' --format=json --path=/var/www/html --allow-root
 
+echo "👤 Enabling Customer Signup & Registration on WooCommerce My Account / Login page..."
+kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.phar option update users_can_register 1 --path=/var/www/html --allow-root
+kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.phar option update woocommerce_enable_myaccount_registration 'yes' --path=/var/www/html --allow-root
+kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.phar option update woocommerce_registration_generate_username 'no' --path=/var/www/html --allow-root
+kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.phar option update woocommerce_registration_generate_password 'no' --path=/var/www/html --allow-root
+
 echo "🔑 Provisioning WooCommerce REST API Keys for MCP Gateway..."
 kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.phar eval --path=/var/www/html --allow-root '
 global $wpdb;
