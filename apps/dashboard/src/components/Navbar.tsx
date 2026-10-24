@@ -1,11 +1,13 @@
 import React from 'react';
 import { User } from '../api';
-import { LogOut, Server, Key, Terminal, Cpu, Users, Activity, Shield, BookOpen } from 'lucide-react';
+import { LogOut, Server, Key, Terminal, Cpu, Users, BookOpen } from 'lucide-react';
+
+export type DashboardTab = 'servers' | 'chat' | 'access' | 'monitoring' | 'members' | 'docs';
 
 interface NavbarProps {
   user: User;
-  currentTab: 'servers' | 'keys' | 'audit' | 'chat' | 'members' | 'observability' | 'oauth' | 'docs';
-  onTabChange: (tab: 'servers' | 'keys' | 'audit' | 'chat' | 'members' | 'observability' | 'oauth' | 'docs') => void;
+  currentTab: DashboardTab;
+  onTabChange: (tab: DashboardTab) => void;
   onLogout: () => void;
 }
 
@@ -15,17 +17,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   onTabChange,
   onLogout,
 }) => {
-  const allTabs = [
+  const mainTabs = [
     { id: 'servers', label: 'Upstreams', icon: Server, adminOnly: false },
-    { id: 'keys', label: 'API Keys', icon: Key, adminOnly: false },
-    { id: 'oauth', label: 'OAuth Apps', icon: Shield, adminOnly: false },
-    { id: 'docs', label: 'Connect AI', icon: BookOpen, adminOnly: false },
-    { id: 'audit', label: 'Audit Log', icon: Terminal, adminOnly: false },
-    { id: 'observability', label: 'Metrics', icon: Activity, adminOnly: false },
     { id: 'chat', label: 'Chat Agent', icon: Cpu, adminOnly: false },
+    { id: 'access', label: 'Access', icon: Key, adminOnly: false },
+    { id: 'monitoring', label: 'Monitoring', icon: Terminal, adminOnly: false },
     { id: 'members', label: 'Team', icon: Users, adminOnly: true },
   ] as const;
-  const tabs = allTabs.filter(t => !t.adminOnly || user.role === 'admin');
+
+  const mobileTabs = [
+    ...mainTabs,
+    { id: 'docs', label: 'Connect AI', icon: BookOpen, adminOnly: false },
+  ] as const;
+
+  const desktopFiltered = mainTabs.filter(t => !t.adminOnly || user.role === 'admin');
+  const mobileFiltered = mobileTabs.filter(t => !t.adminOnly || user.role === 'admin');
 
   return (
     <header className="bg-black border-b border-zinc-850 sticky top-0 z-40 shrink-0">
@@ -47,18 +53,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Desktop Tab Navigation (Hidden on Mobile) */}
+          {/* Desktop Tab Navigation (Clean, Spacious 4-5 Items) */}
           <nav className="hidden md:flex items-center space-x-1">
-            {tabs.map((tab) => {
+            {desktopFiltered.map((tab) => {
               const Icon = tab.icon;
               const isActive = currentTab === tab.id;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => onTabChange(tab.id)}
-                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  onClick={() => onTabChange(tab.id as DashboardTab)}
+                  className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                     isActive
-                      ? 'bg-zinc-800 text-white'
+                      ? 'bg-zinc-800 text-white shadow-sm'
                       : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
                   }`}
                 >
@@ -69,8 +75,25 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* User profile & Logout */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Right Action: Connect AI Quick Link + User Profile & Logout */}
+          <div className="flex items-center space-x-2.5 sm:space-x-3">
+            {/* Sleek Connect AI Action Button */}
+            <button
+              onClick={() => onTabChange('docs')}
+              className={`hidden sm:inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                currentTab === 'docs'
+                  ? 'bg-orange-500/15 border-orange-500/40 text-orange-400 shadow-sm'
+                  : 'bg-zinc-900/80 border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 hover:bg-zinc-850'
+              }`}
+              title="External AI Integration Guide"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-orange-400" />
+              <span>Connect AI</span>
+            </button>
+
+            <div className="hidden sm:block h-3.5 sm:h-4 w-px bg-zinc-800" />
+
+            {/* User Profile */}
             <div className="text-right">
               <div className="text-[11px] sm:text-xs font-medium text-zinc-200 leading-none truncate max-w-[110px] sm:max-w-none">
                 {user.name}
@@ -95,13 +118,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Mobile Tab Strip (Scrollable, Clean, No-Scrollbar) */}
         <nav className="flex md:hidden items-center space-x-1 py-1.5 overflow-x-auto no-scrollbar border-t border-zinc-900/80 -mx-3 px-3">
-          {tabs.map((tab) => {
+          {mobileFiltered.map((tab) => {
             const Icon = tab.icon;
             const isActive = currentTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => onTabChange(tab.id)}
+                onClick={() => onTabChange(tab.id as DashboardTab)}
                 className={`flex items-center space-x-1 px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap shrink-0 transition-colors ${
                   isActive
                     ? 'bg-zinc-800 text-white'
