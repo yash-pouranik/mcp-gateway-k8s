@@ -7,6 +7,7 @@ import auditRoutes from './routes/audit.js';
 import chatRoutes from './routes/chat.js';
 import metricsRoutes from './routes/metrics.js';
 import oauthRoutes from './routes/oauth.js';
+import docsRoutes from './routes/docs.js';
 import { authenticateMcpClient } from './middleware/auth.js';
 import { handleMcpRequest } from './mcp/server.js';
 import { startHealthMonitor } from './services/healthMonitor.js';
@@ -49,7 +50,8 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/metrics', metricsRoutes);
 
-// OAuth 2.0 Authorization Server routes (PUBLIC - before auth middleware)
+// OAuth 2.0 Authorization Server & Public Documentation routes (PUBLIC - before auth middleware)
+app.use(docsRoutes);
 app.use(oauthRoutes);
 
 // Streamable HTTP MCP Endpoint (supports API Key and JWT)
