@@ -241,56 +241,320 @@ router.get('/oauth/authorize', async (req: Request, res: Response): Promise<void
   const scopeList = requestedScope.split(' ');
   const scopeBadges = scopeList
     .map((s: string) => {
-      const labels: Record<string, string> = {
-        'mcp:read': '📖 Read Tools (list products, orders)',
-        'mcp:write': '✏️ Write Tools (create/update)',
-        'mcp:admin': '🔑 Admin Tools (delete, config)',
-      };
-      return labels[s] || s;
+      if (s === 'mcp:read') {
+        return `<div class="scope-item"><span class="scope-tag scope-read">mcp:read</span><span class="scope-desc">Read tools (list products, orders, notes)</span></div>`;
+      }
+      if (s === 'mcp:write') {
+        return `<div class="scope-item"><span class="scope-tag scope-write">mcp:write</span><span class="scope-desc">Write tools (create, update operations)</span></div>`;
+      }
+      if (s === 'mcp:admin') {
+        return `<div class="scope-item"><span class="scope-tag scope-admin">mcp:admin</span><span class="scope-desc">Admin tools (delete with HITL guardrail)</span></div>`;
+      }
+      return `<div class="scope-item"><span class="scope-tag">${escapeHtml(s)}</span></div>`;
     })
-    .join('<br/>');
+    .join('');
 
-  // Render consent HTML
+  // Render consent HTML matching VYNN Dark Minimalist Design System
   const html = `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Authorize Access — VYNN MCP Gateway</title>
+  <title>Authorize Connection — VYNN MCP Gateway</title>
+  <link rel="icon" type="image/png" href="/vynn_ai_logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #000000;
+      --card-bg: #09090b;
+      --inner-bg: #18181b;
+      --border: #27272a;
+      --border-hover: #3f3f46;
+      --text: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --text-faint: #71717a;
+      --cf-orange: #f38020;
+      --cf-hover: #fa8c16;
+      --cf-dark: #c45e0f;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 40px; max-width: 440px; width: 100%; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
-    .logo { font-size: 32px; font-weight: 800; color: #6366f1; letter-spacing: -1px; margin-bottom: 8px; }
-    .subtitle { color: #94a3b8; font-size: 14px; margin-bottom: 32px; }
-    .client-name { font-size: 20px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
-    .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 16px; }
-    .scopes { background: #0f172a; border-radius: 12px; padding: 16px; margin: 20px 0; border: 1px solid #1e3a5f; }
-    .scopes p { font-size: 13px; color: #94a3b8; margin-bottom: 10px; }
-    .scopes .scope-list { font-size: 14px; color: #e2e8f0; line-height: 2; }
-    .user-section { margin: 24px 0; padding: 16px; background: #0f172a; border-radius: 12px; border: 1px solid #334155; }
-    .user-section label { display: block; font-size: 12px; color: #64748b; margin-bottom: 6px; font-weight: 600; letter-spacing: 0.05em; }
-    .user-section input { width: 100%; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px 14px; color: #e2e8f0; font-size: 14px; outline: none; }
-    .user-section input:focus { border-color: #6366f1; }
-    .btn-row { display: flex; gap: 12px; margin-top: 24px; }
-    .btn { flex: 1; padding: 12px; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
-    .btn-approve { background: #6366f1; color: #fff; }
-    .btn-approve:hover { background: #4f46e5; }
-    .btn-deny { background: #334155; color: #94a3b8; }
-    .btn-deny:hover { background: #475569; color: #e2e8f0; }
-    .footer { margin-top: 20px; font-size: 12px; color: #475569; text-align: center; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px 28px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+    }
+    .brand-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .logo-box {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: var(--inner-bg);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+    }
+    .logo-box img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+    }
+    .brand-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: -0.01em;
+    }
+    .brand-slash { color: #52525b; font-weight: 400; }
+    .brand-sub { color: var(--text-muted); font-weight: 500; font-size: 14px; }
+    .k8s-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--inner-bg);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .brand-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+    .app-card {
+      background: var(--inner-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+    }
+    .app-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    .app-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--cf-orange);
+      box-shadow: 0 0 8px rgba(243, 128, 32, 0.6);
+    }
+    .app-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      word-break: break-word;
+    }
+    .scopes-box {
+      background: var(--inner-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+    }
+    .scopes-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    .scopes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .scope-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+    .scope-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .scope-read {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: #34d399;
+    }
+    .scope-write {
+      background: rgba(243, 128, 32, 0.12);
+      border: 1px solid rgba(243, 128, 32, 0.3);
+      color: #fb923c;
+    }
+    .scope-admin {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #f87171;
+    }
+    .scope-desc {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .input-wrap {
+      position: relative;
+    }
+    .input-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px;
+      height: 14px;
+      color: var(--text-faint);
+      pointer-events: none;
+    }
+    .input-wrap input {
+      width: 100%;
+      background: var(--inner-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 12px 9px 34px;
+      color: #ffffff;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .input-wrap input::placeholder {
+      color: #52525b;
+    }
+    .input-wrap input:focus {
+      border-color: var(--cf-orange);
+      box-shadow: 0 0 0 2px rgba(243, 128, 32, 0.2);
+    }
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+    .btn-secondary {
+      background: var(--inner-bg);
+      border-color: var(--border);
+      color: var(--text-muted);
+    }
+    .btn-secondary:hover {
+      background: #27272a;
+      color: #ffffff;
+      border-color: var(--border-hover);
+    }
+    .btn-primary {
+      background: var(--cf-orange);
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    .btn-primary:hover {
+      background: var(--cf-hover);
+    }
+    .btn-primary:active {
+      background: var(--cf-dark);
+    }
+    .btn-arrow {
+      width: 14px;
+      height: 14px;
+    }
+    .footer {
+      margin-top: 24px;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #52525b;
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="logo">VYNN</div>
-    <div class="subtitle">MCP Gateway Authorization</div>
-    <div class="label">Application Requesting Access</div>
-    <div class="client-name">${escapeHtml(client.name)}</div>
-    <div class="scopes">
-      <p>This application is requesting the following permissions:</p>
-      <div class="scope-list">${scopeBadges}</div>
+    <div class="brand-header">
+      <div class="logo-box">
+        <img src="/vynn_ai_logo.png" alt="VYNN">
+      </div>
+      <div class="brand-title">
+        <span>VYNN</span>
+        <span class="brand-slash">/</span>
+        <span class="brand-sub">MCP Gateway</span>
+        <span class="k8s-badge">k8s</span>
+      </div>
+      <p class="brand-desc">Sign in to authorize external AI connection</p>
     </div>
+
+    <div class="app-card">
+      <div class="app-header">
+        <div class="app-dot"></div>
+        <span>Application Requesting Access</span>
+      </div>
+      <div class="app-name">${escapeHtml(client.name)}</div>
+    </div>
+
+    <div class="scopes-box">
+      <div class="scopes-title">Requested Permissions</div>
+      <div class="scopes-list">
+        ${scopeBadges}
+      </div>
+    </div>
+
     <form method="POST" action="/oauth/authorize" id="consent-form">
       <input type="hidden" name="client_id" value="${escapeHtml(client_id)}"/>
       <input type="hidden" name="redirect_uri" value="${escapeHtml(redirect_uri)}"/>
@@ -299,19 +563,41 @@ router.get('/oauth/authorize', async (req: Request, res: Response): Promise<void
       <input type="hidden" name="code_challenge" value="${escapeHtml(code_challenge || '')}"/>
       <input type="hidden" name="code_challenge_method" value="${escapeHtml(code_challenge_method || '')}"/>
       <input type="hidden" name="action" value="" id="action-field"/>
-      <div class="user-section">
-        <label for="email">Your Gateway Email</label>
-        <input type="email" id="email" name="email" placeholder="admin@example.com" required autocomplete="email"/>
-        <br/><br/>
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password"/>
+
+      <div class="form-group">
+        <label for="email">Gateway Email</label>
+        <div class="input-wrap">
+          <svg class="input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          <input type="email" id="email" name="email" placeholder="you@domain.com" required autocomplete="email"/>
+        </div>
       </div>
-      <div class="btn-row">
-        <button type="button" class="btn btn-deny" onclick="document.getElementById('action-field').value='deny';document.getElementById('consent-form').submit()">Deny</button>
-        <button type="button" class="btn btn-approve" onclick="document.getElementById('action-field').value='approve';document.getElementById('consent-form').submit()">Allow Access</button>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+          <svg class="input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          <input type="password" id="password" name="password" placeholder="••••••••••••" required autocomplete="current-password"/>
+        </div>
+      </div>
+
+      <div class="btn-row btn-group">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('action-field').value='deny';document.getElementById('consent-form').submit()">Deny</button>
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('action-field').value='approve';document.getElementById('consent-form').submit()">
+          <span>Allow Access</span>
+          <svg class="btn-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </button>
       </div>
     </form>
-    <div class="footer">VYNN MCP Gateway · Secure OAuth 2.0 Authorization</div>
+
+    <div class="footer">
+      VYNN MCP Gateway · Production Multi-Tenant Hub
+    </div>
   </div>
 </body>
 </html>`;
