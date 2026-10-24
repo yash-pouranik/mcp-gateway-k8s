@@ -19,6 +19,7 @@ const METRICS_TOKEN = process.env.METRICS_TOKEN || process.env.JWT_SECRET || 'mc
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get(['/health', '/api/health'], (_req, res) => {

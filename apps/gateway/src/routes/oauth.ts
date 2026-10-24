@@ -20,6 +20,65 @@ const ISSUER = process.env.OAUTH_ISSUER || 'https://vynn.urbackend.in';
 // Middleware for URL-encoded form bodies (POST /oauth/authorize)
 const urlencodedParser = express.urlencoded({ extended: false });
 
+/**
+ * Flexible redirect URI matcher:
+ * Handles exact matches, ChatGPT dynamic callback URLs, and wildcard prefixes.
+ */
+function isAllowedRedirectUri(registeredUris: string[], requestedUri: string): boolean {
+  if (!requestedUri) return false;
+  if (registeredUris.includes(requestedUri)) return true;
+
+  for (const reg of registeredUris) {
+    // If registered is chatgpt.com or starts with chatgpt.com
+    if (reg.includes('chatgpt.com') && requestedUri.includes('chatgpt.com/aip/')) {
+      return true;
+    }
+    // Prefix wildcard support (e.g. https://chatgpt.com/*)
+    if (reg.endsWith('*') && requestedUri.startsWith(reg.slice(0, -1))) {
+      return true;
+    }
+    // Match base URL without query/hash
+    try {
+      const regUrl = new URL(reg);
+      const reqUrl = new URL(requestedUri);
+      if (regUrl.origin === reqUrl.origin && reqUrl.pathname.startsWith(regUrl.pathname)) {
+        return true;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return false;
+}
+
+/**
+ * Extract client_id and client_secret from both:
+ *  1. HTTP Basic Auth header (client_secret_basic)
+ *  2. Request body / query (client_secret_post)
+ */
+function extractClientCredentials(req: Request): { clientId?: string; clientSecret?: string } {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.toLowerCase().startsWith('basic ')) {
+    try {
+      const b64 = authHeader.substring(6).trim();
+      const decoded = Buffer.from(b64, 'base64').toString('utf-8');
+      const idx = decoded.indexOf(':');
+      if (idx !== -1) {
+        return {
+          clientId: decodeURIComponent(decoded.substring(0, idx)),
+          clientSecret: decodeURIComponent(decoded.substring(idx + 1)),
+        };
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const clientId = (req.body?.client_id || req.query?.client_id) as string | undefined;
+  const clientSecret = (req.body?.client_secret || req.query?.client_secret) as string | undefined;
+  return { clientId, clientSecret };
+}
+
 // ============================================================
 // RFC 8414: Discovery Endpoint (PUBLIC - no auth)
 // ============================================================
@@ -89,10 +148,10 @@ router.get('/oauth/authorize', async (req: Request, res: Response): Promise<void
     res.status(400).json({ error: 'invalid_client', error_description: 'Unknown client_id' });
     return;
   }
-  if (!client.redirectUris.includes(redirect_uri)) {
+  if (!isAllowedRedirectUri(client.redirectUris, redirect_uri)) {
     res.status(400).json({
       error: 'invalid_request',
-      error_description: 'redirect_uri not registered for this client',
+      error_description: `redirect_uri '${redirect_uri}' not registered for this client. Registered: ${client.redirectUris.join(', ')}`,
     });
     return;
   }
@@ -214,8 +273,8 @@ router.post('/oauth/authorize', urlencodedParser, async (req: Request, res: Resp
 
   // Validate client
   const client = await prisma.oAuthClient.findUnique({ where: { clientId: client_id } });
-  if (!client || !client.redirectUris.includes(redirect_uri)) {
-    res.status(400).json({ error: 'invalid_client' });
+  if (!client || !isAllowedRedirectUri(client.redirectUris, redirect_uri)) {
+    res.status(400).json({ error: 'invalid_client', error_description: 'Client or redirect_uri not valid' });
     return;
   }
 
@@ -252,16 +311,16 @@ router.post('/oauth/authorize', urlencodedParser, async (req: Request, res: Resp
 // POST /oauth/token — Token Exchange (PUBLIC endpoint)
 // ============================================================
 router.post('/oauth/token', async (req: Request, res: Response): Promise<void> => {
-  const {
-    grant_type,
-    code,
-    redirect_uri,
-    client_id,
-    client_secret,
-    code_verifier,
-    refresh_token,
-    scope,
-  } = req.body as Record<string, string>;
+  const credentials = extractClientCredentials(req);
+  const client_id = credentials.clientId || (req.body?.client_id as string) || (req.query?.client_id as string);
+  const client_secret = credentials.clientSecret || (req.body?.client_secret as string) || (req.query?.client_secret as string);
+
+  const grant_type = (req.body?.grant_type || req.query?.grant_type) as string;
+  const code = (req.body?.code || req.query?.code) as string;
+  const redirect_uri = (req.body?.redirect_uri || req.query?.redirect_uri) as string;
+  const code_verifier = (req.body?.code_verifier || req.query?.code_verifier) as string;
+  const refresh_token = (req.body?.refresh_token || req.query?.refresh_token) as string;
+  const scope = (req.body?.scope || req.query?.scope) as string;
 
   if (!grant_type) {
     res.status(400).json({ error: 'invalid_request', error_description: 'grant_type is required' });
@@ -276,6 +335,20 @@ router.post('/oauth/token', async (req: Request, res: Response): Promise<void> =
         error_description: 'code, redirect_uri, client_id required',
       });
       return;
+    }
+
+    const client = await prisma.oAuthClient.findUnique({ where: { clientId: client_id } });
+    if (!client) {
+      res.status(400).json({ error: 'invalid_client', error_description: 'Client not found' });
+      return;
+    }
+
+    if (client.clientSecretHash && client_secret) {
+      const secretHash = hashToken(client_secret);
+      if (secretHash !== client.clientSecretHash) {
+        res.status(401).json({ error: 'invalid_client', error_description: 'Invalid client_secret' });
+        return;
+      }
     }
 
     const result = await validateAndConsumeAuthCode({
@@ -430,7 +503,7 @@ router.post('/oauth/token', async (req: Request, res: Response): Promise<void> =
 // POST /oauth/revoke — Token Revocation (RFC 7009)
 // ============================================================
 router.post('/oauth/revoke', async (req: Request, res: Response): Promise<void> => {
-  const { token } = req.body as Record<string, string>;
+  const token = ((req.body?.token || req.query?.token) as string) || '';
   if (!token) {
     res.status(400).json({ error: 'invalid_request', error_description: 'token is required' });
     return;
