@@ -95,10 +95,14 @@ class UpstreamManager {
 
     const aggregatedTools: UpstreamTool[] = [];
 
-    for (const s of servers) {
+    // Query all upstreams in parallel so one slow/dead server only costs its own timeout
+    const results = await Promise.allSettled(servers.map((s) => this.jsonRpcCall(s, 'tools/list')));
+
+    results.forEach((outcome, i) => {
+      const s = servers[i];
       try {
-        const listResult = await this.jsonRpcCall(s, 'tools/list');
-        const tools = listResult?.tools || [];
+        if (outcome.status === 'rejected') throw outcome.reason;
+        const tools = outcome.value?.tools || [];
 
         for (const tool of tools) {
           aggregatedTools.push({
@@ -118,7 +122,7 @@ class UpstreamManager {
           data: { status: 'unreachable' },
         }).catch(() => {});
       }
-    }
+    });
 
     this.cachedTools = { tools: aggregatedTools, timestamp: Date.now() };
     return aggregatedTools;

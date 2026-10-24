@@ -105,6 +105,7 @@ router.post('/', requireUserAuth, requireAdmin, async (req: Request, res: Respon
   });
 
   updateUpstreamStatusMetric(server.slug, 'connected');
+  upstreamManager.invalidateCache();
   res.status(201).json({ server });
 });
 
@@ -140,6 +141,7 @@ router.patch('/:id/toggle', requireUserAuth, requireAdmin, async (req: Request, 
   });
 
   updateUpstreamStatusMetric(updated.slug, updatedStatus);
+  upstreamManager.invalidateCache();
   res.json({ server: updated });
 });
 
@@ -156,6 +158,7 @@ router.delete('/:id', requireUserAuth, requireAdmin, async (req: Request, res: R
   await prisma.mcpServer.delete({ where: { id } });
   updateUpstreamStatusMetric(server.slug, 'disabled');
 
+  upstreamManager.invalidateCache();
   res.json({ message: 'Server deleted successfully' });
 });
 
@@ -221,6 +224,7 @@ router.put('/:id', requireUserAuth, requireAdmin, async (req: Request, res: Resp
     },
   });
 
+  upstreamManager.invalidateCache();
   res.json({ server: updated });
 });
 
