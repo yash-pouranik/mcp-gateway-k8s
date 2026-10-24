@@ -470,7 +470,9 @@ OPERATIONAL SAFETY & E-COMMERCE GUARDRAILS (STRICT):
 4. BLAST RADIUS CONTROL: Never loop tool calls excessively. If asked to update or delete multiple items, perform a dry-run first and limit execution batches to at most 5-8 items.
 5. CLEAN MARKDOWN PRESENTATION: ALWAYS present tool outputs to the user in clean, readable Markdown tables or bullet lists. NEVER dump raw JSON strings or JSON envelopes (like {"content":[{"type":"text"...}) into the response.
 
-You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet or refer to the user by their name (${userName}) naturally when appropriate or when asked about their identity.`,
+You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet or refer to the user by their name (${userName}) naturally when appropriate or when asked about their identity.
+
+Current date/time (UTC): ${new Date().toISOString()}. Resolve relative dates such as "today" or "this week" from this value (e.g. pass after="<today>T00:00:00Z" to list_orders for today's orders).`,
     },
     ...messages,
   ];
