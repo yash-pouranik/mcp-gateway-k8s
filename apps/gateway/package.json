@@ -11,7 +11,7 @@
     "prisma:migrate": "prisma migrate deploy",
     "prisma:push": "prisma db push",
     "seed": "tsx prisma/seed.ts",
-    "test": "tsx test/metrics.test.ts && tsx test/guardrails.test.ts && tsx test/oauth-unit.test.ts",
+    "test": "tsx --env-file=test/.env.test test/metrics.test.ts && tsx --env-file=test/.env.test test/guardrails.test.ts && tsx --env-file=test/.env.test test/oauth-unit.test.ts",
     "test:integration": "tsx test/oauth.test.ts"
   },
   "dependencies": {

@@ -1,8 +1,9 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db.js';
+import { requireEnv } from './env.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key-for-mcp-gateway';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 const ISSUER = process.env.OAUTH_ISSUER || 'https://vynn.urbackend.in';
 
 export function hashToken(token: string): string {

@@ -12,10 +12,11 @@ import { authenticateMcpClient } from './middleware/auth.js';
 import { handleMcpRequest } from './mcp/server.js';
 import { startHealthMonitor } from './services/healthMonitor.js';
 import { register } from './services/metrics.js';
+import { requireEnv } from './services/env.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const METRICS_TOKEN = process.env.METRICS_TOKEN || process.env.JWT_SECRET || 'mcp_gateway_prometheus_scrape_secret';
+const METRICS_TOKEN = process.env.METRICS_TOKEN || requireEnv('JWT_SECRET');
 
 app.use(cors());
 app.use(express.json());

@@ -4,8 +4,9 @@ import { prisma } from '../db.js';
 import { hashApiKey } from '../services/crypto.js';
 import { recordAuditLog } from '../services/audit.js';
 import { recordAuthFailure } from '../services/metrics.js';
+import { requireEnv } from '../services/env.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key-for-mcp-gateway';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 
 export interface AuthenticatedUser {
   id: string;

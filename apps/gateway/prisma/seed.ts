@@ -7,7 +7,8 @@ const prisma = new PrismaClient();
 const ALGORITHM = 'aes-256-gcm';
 
 function getSecretKey(): Buffer {
-  const secret = process.env.ENCRYPTION_KEY || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+  const secret = process.env.ENCRYPTION_KEY;
+  if (!secret) throw new Error('Missing required environment variable: ENCRYPTION_KEY');
   if (secret.length === 64) {
     return Buffer.from(secret, 'hex');
   }
@@ -32,7 +33,8 @@ async function main() {
 
   // 1. Seed Admin User
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@mcp-platform.local';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'AdminPass123!';
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) throw new Error('Missing required environment variable: ADMIN_PASSWORD');
   const adminHash = await bcrypt.hash(adminPassword, 12);
 
   const admin = await prisma.user.upsert({
@@ -99,7 +101,8 @@ async function main() {
 
   // 5. Seed Upstream MCP Servers
   // Server 1: WooCommerce MCP Server
-  const wcToken = process.env.WOOCOMMERCE_MCP_TOKEN || 'mcp_internal_bearer_token_secret_9988';
+  const wcToken = process.env.WOOCOMMERCE_MCP_TOKEN;
+  if (!wcToken) throw new Error('Missing required environment variable: WOOCOMMERCE_MCP_TOKEN');
   const wcEncrypted = encryptCredential(`Bearer ${wcToken}`);
 
   await prisma.mcpServer.upsert({

@@ -75,7 +75,7 @@ The **Urumi MCP Gateway Platform** is an enterprise-grade, Kubernetes-native int
 ### 2.4 Gateway Engine & Database Core (`gateway` Namespace)
 - **Upstream Tool Aggregator:** Dynamically queries registered upstream servers, resolving tool naming collisions using the deterministic format `{server_slug}__{tool_name}`.
 - **Failure Isolation & Circuit Breaking:** Wraps upstream requests in isolated 15-second timeouts. If an upstream pod crashes or experiences latency, other servers remain completely unaffected, and the gateway flags the failing server as `unreachable`.
-- **Fast Indexed Authentication:** Authenticates incoming client tokens (`urumi_live_<hex>`) via $O(1)$ SHA-256 indexed hash lookups in PostgreSQL, bypassing slow bcrypt lookups for high-throughput machine-to-machine calls.
+- **Fast Indexed Authentication:** Authenticates incoming client tokens (`mcp_live_<hex>`) via $O(1)$ SHA-256 indexed hash lookups in PostgreSQL, bypassing slow bcrypt lookups for high-throughput machine-to-machine calls.
 - **SSRF Defense Engine:** Prevents Server-Side Request Forgery during dynamic server registration by validating URLs against an in-cluster whitelist and resolving external hostnames to verify they do not point to loopback (`127.0.0.0/8`), link-local (`169.254.0.0/16`), or RFC1918 private subnets.
 
 ### 2.5 React Dashboard & AI Agent Studio (`apps/dashboard`)
@@ -103,7 +103,7 @@ sequenceDiagram
     participant Upstream as WooCommerce MCP
     participant Store as WordPress REST API
 
-    Client->>Ingress: POST /mcp (tools/call) with Authorization: Bearer urumi_live_***
+    Client->>Ingress: POST /mcp (tools/call) with Authorization: Bearer mcp_live_***
     Ingress->>GW: Forward Request (proxy-buffering: off)
     GW->>DB: Query api_keys WHERE key_hash = SHA256(rawKey)
     DB-->>GW: Return User & Key Status (Active)

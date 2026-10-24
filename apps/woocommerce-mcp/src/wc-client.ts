@@ -13,8 +13,8 @@ export class WooCommerceClient {
     this.config = {
       baseUrl: config?.baseUrl || process.env.WOOCOMMERCE_API_URL || 'http://wordpress.woocommerce.svc.cluster.local:80',
       hostHeader: config?.hostHeader || process.env.WOOCOMMERCE_HOST_HEADER || 'store.localtest.me',
-      consumerKey: config?.consumerKey || process.env.WOOCOMMERCE_CONSUMER_KEY || 'ck_urumi_mcp_gateway_prod_key',
-      consumerSecret: config?.consumerSecret || process.env.WOOCOMMERCE_CONSUMER_SECRET || 'cs_urumi_mcp_gateway_prod_secret'
+      consumerKey: config?.consumerKey || process.env.WOOCOMMERCE_CONSUMER_KEY || '',
+      consumerSecret: config?.consumerSecret || process.env.WOOCOMMERCE_CONSUMER_SECRET || ''
     };
 
     const token = Buffer.from(`${this.config.consumerKey}:${this.config.consumerSecret}`).toString('base64');

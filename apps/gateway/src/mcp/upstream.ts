@@ -51,6 +51,8 @@ class UpstreamManager {
           params,
         }),
         signal: controller.signal,
+        // Never follow redirects: a 3xx to an internal/metadata address would bypass the SSRF check
+        redirect: 'manual',
       });
 
       if (!response.ok) {

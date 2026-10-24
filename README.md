@@ -41,8 +41,14 @@ The entire platform is deployed live on a single-node AWS EC2 production Kuberne
    - **At-Rest AES-256-GCM Encryption:** Upstream credentials encrypted in PostgreSQL; zero credential leakage to clients or browser.
    - **Zero-Trust NetworkPolicies:** Default-deny ingress across all 3 namespaces with micro-segmented pinholes. Upstream MCP servers and databases run as private ClusterIPs with zero public Ingress.
    - **Fast Indexed SHA-256 API Keys:** Machine-to-machine tokens (`mcp_live_<hex>`) authenticated via indexed SHA-256 hash queries.
-4. **Deep Observability & Telemetry (Standout #8):**
-   - Per-tool execution latency (ms), input/output JSON inspector, active background health probers, and per-key usage counters.
+   - **Non-root containers:** the upstream MCP servers run as non-root; gateway, dashboard and PostgreSQL still use image defaults (see `docs/threat-model.md`).
+4. **OAuth on the Gateway (Standout #3):**
+   - MCP-spec OAuth 2.1 authorization server: RFC 9728 protected-resource metadata, RFC 8414 server metadata, RFC 7591 dynamic client registration, PKCE, refresh tokens (`apps/gateway/src/routes/oauth.ts`, `apps/gateway/src/services/oauthService.ts`).
+   - Claude / ChatGPT connectors log in via browser; granted scopes are capped by the user's role (members get `mcp:read` only).
+5. **Deep Observability & Telemetry (Standout #8):**
+   - Prometheus metrics for tool calls, error rate, latency and timeouts per server (`apps/gateway/src/services/metrics.ts`), dashboard Observability view, per-tool latency, input/output inspector and health monitor.
+6. **Upgrades & Rollback (Standout #9):**
+   - Documented Helm revision-based upgrade and rollback flow — see [Upgrades & Rollback](#upgrades--rollback-helm).
 
 ---
 
@@ -194,10 +200,12 @@ kubectl apply -f k8s/network-policies.yaml
 ### 6. Configure Local DNS & OpenAI Key
 The domain suffix `*.localtest.me` automatically resolves to `127.0.0.1` on all operating systems without editing `/etc/hosts`.
 
-To enable the autonomous AI Chat Agent, inject your OpenAI API key into the running Gateway deployment:
+To enable the AI Chat Agent, pass your LLM API key through Helm so it lands in the `gateway-secrets` Kubernetes Secret (never in source or a plain env var):
 ```bash
-kubectl set env deployment/gateway OPENAI_API_KEY="sk-proj-YOUR_ACTUAL_KEY" OPENAI_MODEL="gpt-4o-mini" -n gateway
+helm upgrade --install gateway helm/charts/gateway -n gateway -f helm/values-local.yaml \
+  --set gateway.env.openaiApiKey="$OPENAI_API_KEY" --set gateway.env.openaiModel="gpt-4o-mini"
 ```
+`gateway.env.geminiApiKey` and `gateway.env.groqApiKey` work the same way for the other supported providers.
 
 ---
 
@@ -236,12 +244,21 @@ kubectl set env deployment/gateway OPENAI_API_KEY="sk-proj-YOUR_ACTUAL_KEY" OPEN
 ### Scenario C: External MCP Client (Claude Code / Cursor)
 Connect any standard MCP client using Streamable HTTP:
 - **Server URL:** `https://dashboard.localtest.me/mcp`
-- **Headers:** `Authorization: Bearer urumi_live_<your_key>`
+- **Headers:** `Authorization: Bearer mcp_live_<your_key>`
 - Execute multi-server queries querying WooCommerce orders alongside team notes in a single prompt.
+
+Claude Code example:
+```bash
+claude mcp add --transport http mcp-gateway https://dashboard.localtest.me/mcp --header "Authorization: Bearer mcp_live_<your_key>"
+```
+MCP Inspector: `npx @modelcontextprotocol/inspector`, choose **Streamable HTTP**, enter the URL above and add the same `Authorization` header.
+
+Members only see read-only tools, so for user B use a read-only cross-server prompt, e.g. *"List today's WooCommerce orders and the FakeStore product categories."*
 
 ### Scenario D: Governance & Failure Containment
 1. **API Key Revocation:** Revoke an active key in the dashboard; subsequent tool requests immediately fail with HTTP 401 and log an unauthorized event in the audit trail.
-2. **Server Outage Isolation:** Kill an upstream MCP server pod (`kubectl delete pod ... -n extra-mcps`). The dashboard marks the server as `Unreachable`, while WooCommerce and Notes servers continue operating with zero downtime.
+2. **Disable an Upstream:** Toggle a server off in **Servers**. Its tools disappear immediately from `tools/list` for external clients and from the chat agent; direct calls return `Server "<slug>" is currently disabled`.
+3. **Server Outage Isolation:** Kill an upstream MCP server pod (`kubectl delete pod ... -n extra-mcps`). The dashboard marks the server as `Unreachable`, while WooCommerce and Notes servers continue operating with zero downtime.
 
 ---
 

@@ -1,10 +1,12 @@
 import crypto from 'node:crypto';
 
+import { requireEnv } from './env.js';
+
 const ALGORITHM = 'aes-256-gcm';
 
 // ENCRYPTION_KEY must be a 32-byte hex string (64 chars) or 32 raw bytes
 function getSecretKey(): Buffer {
-  const secret = process.env.ENCRYPTION_KEY || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+  const secret = requireEnv('ENCRYPTION_KEY');
   if (secret.length === 64) {
     return Buffer.from(secret, 'hex');
   }
@@ -57,7 +59,7 @@ export function hashApiKey(key: string): string {
 
 /**
  * Generate a new random API key.
- * Format: urumi_live_<32 hex chars>
+ * Format: mcp_live_<32 hex chars>
  */
 export function generateApiKey(prefix = process.env.API_KEY_PREFIX || 'mcp_live_'): { rawKey: string; keyPrefix: string; keyHash: string } {
   const randomHex = crypto.randomBytes(16).toString('hex'); // 32 hex chars

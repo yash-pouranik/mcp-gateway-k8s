@@ -8,7 +8,10 @@ import {
 import { WooCommerceClient } from './wc-client.js';
 
 const PORT = process.env.PORT || 3000;
-const MCP_AUTH_TOKEN = process.env.WOOCOMMERCE_MCP_TOKEN || 'mcp_internal_bearer_token_secret_9988';
+const MCP_AUTH_TOKEN = process.env.WOOCOMMERCE_MCP_TOKEN;
+if (!MCP_AUTH_TOKEN) {
+  throw new Error('Missing required environment variable: WOOCOMMERCE_MCP_TOKEN');
+}
 
 const app = express();
 app.use(express.json());

@@ -50,7 +50,7 @@ The **Urumi MCP Gateway** functions as a centralized control plane and proxy con
 - **Risk:** Upstream MCP credentials (such as WooCommerce REST API Consumer Keys and Bearer tokens) could leak into dashboard responses, MCP tool schemas, browser local storage, or audit logs.
 - **Mitigations Implemented:**
   1. **Zero Credential Exposure:** Upstream server credentials (`credential_value_encrypted`) are encrypted at rest using AES-256-GCM in PostgreSQL. The Gateway decrypts them strictly in memory when dispatching an upstream request. Upstream headers are stripped from all API outputs (`GET /api/servers`).
-  2. **Fast Indexed API Key Authentication:** Client tokens use the format `urumi_live_<32 hex chars>`. The gateway hashes tokens using SHA-256 before querying PostgreSQL (`api_keys.key_hash`). Plaintext keys are shown only once upon generation and are never stored in the database.
+  2. **Fast Indexed API Key Authentication:** Client tokens use the format `mcp_live_<32 hex chars>`. The gateway hashes tokens using SHA-256 before querying PostgreSQL (`api_keys.key_hash`). Plaintext keys are shown only once upon generation and are never stored in the database.
   3. **Instant Key Revocation:** Revoking a key in the dashboard sets `revoked_at = NOW()`. Subsequent tool calls fail immediately with HTTP 401 without requiring token caching expiration or restarts.
   4. **Strict Role-Based Access Control (RBAC):** Mutating endpoints (`POST /api/servers`, `PUT /api/servers/:id`, `DELETE /api/servers/:id`) require the `admin` role. Standard `member` accounts can only generate personal keys, inspect tools, and use the AI Agent.
 
@@ -63,7 +63,7 @@ The **Urumi MCP Gateway** functions as a centralized control plane and proxy con
        - `mariadb` accepts TCP connections exclusively on port 3306 from pods labeled `app.kubernetes.io/name: wordpress`.
        - `postgres` accepts TCP connections exclusively on port 5432 from pods labeled `app: gateway`.
        - Upstream MCP servers (`woocommerce-mcp`, `fakestore-mcp`, `notes-mcp`) accept ingress exclusively from `app: gateway` on port 3000. Public ingress to upstream MCP servers is physically impossible.
-  2. **Non-Root Container Hardening:** Gateway, Dashboard, and MCP microservices operate as non-root users with read-only root filesystems where applicable.
+  2. **Non-Root Container Hardening:** The three upstream MCP servers (`woocommerce-mcp`, `fakestore-mcp`, `notes-mcp`) run as non-root (`USER node`, `runAsNonRoot: true`). The gateway, dashboard (nginx) and PostgreSQL containers still run with their image defaults; moving them to non-root is a known follow-up.
 
 ### 2.4 Threat Vector: LLM Prompt Injection & Unauthorized Tool Mutation
 - **Risk:** A malicious user prompts the AI Chat Agent with indirect injection attacks to manipulate store prices, delete orders, or execute unauthorized operations.

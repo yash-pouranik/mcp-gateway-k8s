@@ -44,7 +44,7 @@ console.log('   ✅ RFC 7636 PKCE S256 & plain validation passed.');
 
 // 3. OAuth JWT Access Token Issuance & Claims
 console.log('3. Testing OAuth Access Token Claims & Structure...');
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key-for-mcp-gateway';
+const JWT_SECRET = process.env.JWT_SECRET!;
 const accessToken = issueAccessToken({
   userId: 'usr_123',
   clientId: 'mcp_client_test',

@@ -4,9 +4,10 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../db.js';
 import { requireUserAuth } from '../middleware/auth.js';
 import { generateApiKey } from '../services/crypto.js';
+import { requireEnv } from '../services/env.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key-for-mcp-gateway';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 
 // POST /api/auth/login
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
