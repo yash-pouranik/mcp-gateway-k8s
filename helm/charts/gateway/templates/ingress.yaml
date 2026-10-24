@@ -39,6 +39,27 @@ spec:
                 name: gateway
                 port:
                   number: {{ .Values.gateway.port }}
+          - path: /oauth
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: {{ .Values.gateway.port }}
+          - path: /.well-known
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: {{ .Values.gateway.port }}
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: {{ .Values.gateway.port }}
           - path: /
             pathType: Prefix
             backend:
