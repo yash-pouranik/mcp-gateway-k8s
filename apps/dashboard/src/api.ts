@@ -118,6 +118,20 @@ export interface AuditLog {
   };
 }
 
+export interface OAuthClient {
+  id: string;
+  clientId: string;
+  name: string;
+  redirectUris: string[];
+  scopes: string[];
+  trusted: boolean;
+  createdAt: string;
+}
+
+export interface OAuthClientCreated extends OAuthClient {
+  clientSecret: string;
+}
+
 export interface ActivityItem {
   id: string;
   type: 'explore_tools' | 'reasoning' | 'tool_call' | 'process_output' | 'generating_response';
@@ -458,6 +472,40 @@ export const api = {
     const res = await fetch(`/api/metrics/summary?window=${window}`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to load observability metrics summary');
     return res.json();
+  },
+
+  async getOAuthClients(): Promise<OAuthClient[]> {
+    const res = await fetch('/api/oauth/clients', { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Failed to load OAuth clients');
+    return res.json();
+  },
+
+  async createOAuthClient(payload: {
+    name: string;
+    redirectUris: string[];
+    scopes?: string[];
+  }): Promise<OAuthClientCreated> {
+    const res = await fetch('/api/oauth/clients', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as Record<string, string>).error || 'Failed to create OAuth client');
+    }
+    return res.json();
+  },
+
+  async deleteOAuthClient(id: string): Promise<void> {
+    const res = await fetch(`/api/oauth/clients/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as Record<string, string>).error || 'Failed to delete OAuth client');
+    }
   },
 };
 

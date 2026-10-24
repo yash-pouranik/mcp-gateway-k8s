@@ -1,11 +1,11 @@
 import React from 'react';
 import { User } from '../api';
-import { LogOut, Server, Key, Terminal, Cpu, Users, Activity } from 'lucide-react';
+import { LogOut, Server, Key, Terminal, Cpu, Users, Activity, Shield } from 'lucide-react';
 
 interface NavbarProps {
   user: User;
-  currentTab: 'servers' | 'keys' | 'audit' | 'chat' | 'members' | 'observability';
-  onTabChange: (tab: 'servers' | 'keys' | 'audit' | 'chat' | 'members' | 'observability') => void;
+  currentTab: 'servers' | 'keys' | 'audit' | 'chat' | 'members' | 'observability' | 'oauth';
+  onTabChange: (tab: 'servers' | 'keys' | 'audit' | 'chat' | 'members' | 'observability' | 'oauth') => void;
   onLogout: () => void;
 }
 
@@ -18,6 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const allTabs = [
     { id: 'servers', label: 'Upstreams', icon: Server, adminOnly: false },
     { id: 'keys', label: 'API Keys', icon: Key, adminOnly: false },
+    { id: 'oauth', label: 'OAuth Apps', icon: Shield, adminOnly: false },
     { id: 'audit', label: 'Audit Log', icon: Terminal, adminOnly: false },
     { id: 'observability', label: 'Metrics', icon: Activity, adminOnly: false },
     { id: 'chat', label: 'Chat Agent', icon: Cpu, adminOnly: false },

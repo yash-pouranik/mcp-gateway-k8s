@@ -9,7 +9,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@urbackend.in
+    email: yash@urbackend.in
     privateKeySecretRef:
       name: letsencrypt-prod-account-key
     solvers:

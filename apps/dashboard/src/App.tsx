@@ -8,11 +8,12 @@ import { AuditLogView } from './components/AuditLogView';
 import { ChatView } from './components/ChatView';
 import { MembersView } from './components/MembersView';
 import { ObservabilityView } from './components/ObservabilityView';
+import { OAuthClientsView } from './components/OAuthClientsView';
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentTab, setCurrentTab] = useState<'servers' | 'keys' | 'audit' | 'chat' | 'members' | 'observability'>('servers');
+  const [currentTab, setCurrentTab] = useState<'servers' | 'keys' | 'audit' | 'chat' | 'members' | 'observability' | 'oauth'>('servers');
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -74,6 +75,7 @@ export const App: React.FC = () => {
         {currentTab === 'observability' && <ObservabilityView user={user} onNavigateToAudit={() => setCurrentTab('audit')} />}
         {currentTab === 'chat' && <ChatView />}
         {currentTab === 'members' && <MembersView user={user} />}
+        {currentTab === 'oauth' && <OAuthClientsView user={user} />}
       </main>
     </div>
   );

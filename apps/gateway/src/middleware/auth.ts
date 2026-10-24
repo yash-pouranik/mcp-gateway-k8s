@@ -21,6 +21,8 @@ declare global {
       apiKeyId?: string;
       apiKeyPrefix?: string;
       apiKeyName?: string;
+      oauthScope?: string;
+      oauthClientId?: string;
     }
   }
 }
@@ -179,7 +181,15 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
         return;
       }
 
-      req.user = user;
+      req.user = { id: user.id, email: user.email, name: user.name, role: user.role };
+
+      // Check if this is an OAuth token (has scope + token_type fields)
+      const rawPayload = payload as unknown as Record<string, unknown>;
+      if (rawPayload.token_type === 'oauth_access_token' && rawPayload.scope) {
+        req.oauthScope = rawPayload.scope as string;
+        req.oauthClientId = rawPayload.client_id as string;
+      }
+
       next();
       return;
     } catch (err) {

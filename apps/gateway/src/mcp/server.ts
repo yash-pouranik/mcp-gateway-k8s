@@ -106,6 +106,32 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
       const serverSlug = sepIdx !== -1 ? toolName.substring(0, sepIdx) : 'gateway';
       const cleanTool = sepIdx !== -1 ? toolName.substring(sepIdx + 2) : toolName || 'unknown';
 
+      // Scope enforcement for OAuth tokens
+      if (req.oauthScope !== undefined) {
+        const writeTools = ['create_product', 'update_product', 'delete_product', 'update_order_status', 'create_note', 'delete_note'];
+        const adminTools = ['delete_product', 'delete_note'];
+
+        const needsWrite = writeTools.some(t => toolName.includes(t));
+        const needsAdmin = adminTools.some(t => toolName.includes(t));
+
+        const scopes = req.oauthScope.split(' ');
+
+        if (needsAdmin && !scopes.includes('mcp:admin')) {
+          res.status(403).json({
+            error: 'insufficient_scope',
+            error_description: `Tool '${toolName}' requires 'mcp:admin' scope`,
+          });
+          return;
+        }
+        if (needsWrite && !scopes.includes('mcp:write')) {
+          res.status(403).json({
+            error: 'insufficient_scope',
+            error_description: `Tool '${toolName}' requires 'mcp:write' scope`,
+          });
+          return;
+        }
+      }
+
       // Granular RBAC: Enforce role-based tool restrictions
       if (userRole !== 'admin' && isRestrictedTool(toolName)) {
         recordAuthFailure('rbac_denied');
