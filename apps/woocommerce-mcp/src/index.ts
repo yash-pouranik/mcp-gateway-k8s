@@ -90,8 +90,27 @@ function normalizeProductPayload(raw: Record<string, any>) {
           if (typeof tag === 'string') return { name: tag };
           return tag;
         });
+      } else if (key === 'regular_price' && val !== undefined && val !== null && val !== '') {
+        const num = parseFloat(String(val));
+        if (isNaN(num) || num <= 0) {
+          throw new Error(`Financial Guardrail Violation: 'regular_price' must be a positive number greater than 0 (received: ${val}). Negative or zero prices are strictly prohibited.`);
+        }
+        if (num > 1000000) {
+          throw new Error(`Financial Guardrail Violation: 'regular_price' exceeds maximum allowed threshold of 1,000,000 (received: ${val}).`);
+        }
+        payload[key] = num.toFixed(2);
+      } else if (key === 'sale_price' && val !== undefined && val !== null && val !== '') {
+        const num = parseFloat(String(val));
+        if (isNaN(num) || num <= 0) {
+          throw new Error(`Financial Guardrail Violation: 'sale_price' must be a positive number greater than 0 (received: ${val}).`);
+        }
+        payload[key] = num.toFixed(2);
       } else if (key === 'stock_quantity' && val !== undefined && val !== null) {
-        payload[key] = Number(val);
+        const num = Number(val);
+        if (isNaN(num) || num < 0) {
+          throw new Error(`Inventory Guardrail Violation: 'stock_quantity' cannot be negative (received: ${val}).`);
+        }
+        payload[key] = num;
       } else if (key === 'manage_stock') {
         payload[key] = Boolean(val);
       } else {
@@ -108,6 +127,15 @@ function normalizeProductPayload(raw: Record<string, any>) {
         field: key,
         reason: `Field '${key}' is not a recognized writable WooCommerce product property.`
       });
+    }
+  }
+
+  // Cross-field validation: sale_price must be less than regular_price
+  if (payload.regular_price && payload.sale_price) {
+    const reg = parseFloat(payload.regular_price);
+    const sale = parseFloat(payload.sale_price);
+    if (sale >= reg) {
+      throw new Error(`Financial Guardrail Violation: 'sale_price' (${sale}) must be strictly less than 'regular_price' (${reg}).`);
     }
   }
 
@@ -522,6 +550,60 @@ export const TOOLS: Tool[] = [
         }
       }
     }
+  },
+  {
+    name: 'create_customer',
+    description: 'Register a new customer account in the WooCommerce store with email, name, username, and optional billing/shipping addresses.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+          description: 'Customer email address (required)'
+        },
+        first_name: {
+          type: 'string',
+          description: 'Customer first name'
+        },
+        last_name: {
+          type: 'string',
+          description: 'Customer last name'
+        },
+        username: {
+          type: 'string',
+          description: 'Username for the customer (optional, defaults to email username)'
+        },
+        billing: {
+          type: 'object',
+          properties: {
+            first_name: { type: 'string' },
+            last_name: { type: 'string' },
+            address_1: { type: 'string' },
+            city: { type: 'string' },
+            state: { type: 'string' },
+            postcode: { type: 'string' },
+            country: { type: 'string' },
+            email: { type: 'string' },
+            phone: { type: 'string' }
+          },
+          description: 'Billing address object'
+        },
+        shipping: {
+          type: 'object',
+          properties: {
+            first_name: { type: 'string' },
+            last_name: { type: 'string' },
+            address_1: { type: 'string' },
+            city: { type: 'string' },
+            state: { type: 'string' },
+            postcode: { type: 'string' },
+            country: { type: 'string' }
+          },
+          description: 'Shipping address object'
+        }
+      },
+      required: ['email']
+    }
   }
 ];
 
@@ -730,6 +812,28 @@ export async function executeTool(name: string, args: Record<string, any> = {}) 
           {
             type: 'text',
             text: JSON.stringify(customers, null, 2)
+          }
+        ]
+      };
+    }
+
+    case 'create_customer': {
+      if (!args.email || !String(args.email).includes('@')) {
+        throw new Error("Validation Guardrail Violation: A valid 'email' is required to register a customer.");
+      }
+      const customer = await wcClient.createCustomer({
+        email: String(args.email).trim().toLowerCase(),
+        first_name: args.first_name ? String(args.first_name).trim() : undefined,
+        last_name: args.last_name ? String(args.last_name).trim() : undefined,
+        username: args.username ? String(args.username).trim() : undefined,
+        billing: args.billing,
+        shipping: args.shipping
+      });
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(customer, null, 2)
           }
         ]
       };

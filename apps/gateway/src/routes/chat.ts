@@ -7,6 +7,7 @@ import { isRestrictedTool } from '../mcp/server.js';
 import { trackActiveRequest, recordToolCallMetric, recordUpstreamTimeout } from '../services/metrics.js';
 import OpenAI from 'openai';
 import { aiRouter, createOpenAIClient } from '../services/aiRouter.js';
+import { evaluateToolGuardrails, maskSensitiveData, unwrapToolContentEnvelope } from '../services/guardrails.js';
 
 const router = Router();
 
@@ -460,7 +461,14 @@ router.post('/', requireUserAuth, async (req: Request, res: Response): Promise<v
   const conversation: ChatMessageInput[] = [
     {
       role: 'system',
-      content: `You are VYNN, an autonomous AI assistant for the WooCommerce & MCP Gateway platform. You have access to tools across connected systems (e.g. WooCommerce store, Notes, FakeStore). When users ask to view or modify store products, orders, notes, etc., call the respective tools. Always provide clear, helpful markdown summaries of tool results.
+      content: `You are VYNN, an autonomous enterprise AI operations assistant for the WooCommerce MCP Gateway platform. You have access to tools across connected systems (e.g. WooCommerce store, Notes, FakeStore).
+
+OPERATIONAL SAFETY & E-COMMERCE GUARDRAILS (STRICT):
+1. HUMAN-IN-THE-LOOP (HITL) CONFIRMATION: Never execute destructive actions (such as delete_product, delete_note, delete_order, delete_category, or mass deletions) without first listing the affected items (IDs and names/titles) and requesting explicit confirmation from the user (e.g. "Do you confirm deleting product #16 Everyday Pour-Over?"). You must wait for explicit confirmation ("confirm", "yes delete", "proceed") before calling delete tools.
+2. FINANCIAL INTEGRITY: Never update or create products with negative, zero, or inverted prices. All prices must be strictly positive numbers (> 0). A sale_price must always be strictly less than the regular_price.
+3. INVENTORY BOUNDS: Stock quantities must be valid non-negative integers (>= 0).
+4. BLAST RADIUS CONTROL: Never loop tool calls excessively. If asked to update or delete multiple items, perform a dry-run first and limit execution batches to at most 5-8 items.
+5. CLEAN MARKDOWN PRESENTATION: ALWAYS present tool outputs to the user in clean, readable Markdown tables or bullet lists. NEVER dump raw JSON strings or JSON envelopes (like {"content":[{"type":"text"...}) into the response.
 
 You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet or refer to the user by their name (${userName}) naturally when appropriate or when asked about their identity.`,
     },
@@ -473,6 +481,110 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
   const recordedActivities: any[] = [];
   let promptTokensTotal = 0;
   let completionTokensTotal = 0;
+  let totalToolCallsInTurn = 0;
+
+  const deliverFinalResponse = async (rawContent: string) => {
+    const finalContent = maskSensitiveData(unwrapToolContentEnvelope(rawContent));
+    const totalTokens = promptTokensTotal + completionTokensTotal;
+
+    if (currentSessionId) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      try {
+        const currentCount = await prisma.chatMessage.count({ where: { sessionId: currentSessionId } });
+        const assistantMsg = await prisma.chatMessage.create({
+          data: {
+            sessionId: currentSessionId,
+            sequenceNumber: currentCount + 1,
+            role: 'assistant',
+            content: finalContent,
+            provider: executionConfig.providerName,
+            model: executionConfig.model,
+            promptTokens: promptTokensTotal || null,
+            completionTokens: completionTokensTotal || null,
+            totalTokens: totalTokens || null,
+          },
+        });
+
+        // Persist separated tool executions (isolated payload)
+        if (recordedActivities.length > 0) {
+          await prisma.chatToolExecution.createMany({
+            data: recordedActivities.map((act) => ({
+              messageId: assistantMsg.id,
+              toolName: act.tool,
+              input: act.inputSummary ?? undefined,
+              output: act.summary ? { summary: act.summary } : undefined,
+              isError: act.status === 'failed',
+              durationMs: act.durationMs || 0,
+            })),
+          });
+        }
+
+        // Rollup token analytics & session counters
+        await Promise.all([
+          prisma.dailyTokenUsage.upsert({
+            where: {
+              userId_provider_model_date: {
+                userId: req.user!.id,
+                provider: executionConfig.providerName,
+                model: executionConfig.model,
+                date: today,
+              },
+            },
+            update: {
+              promptTokens: { increment: promptTokensTotal },
+              completionTokens: { increment: completionTokensTotal },
+              totalTokens: { increment: totalTokens },
+              requestCount: { increment: 1 },
+            },
+            create: {
+              userId: req.user!.id,
+              provider: executionConfig.providerName,
+              model: executionConfig.model,
+              date: today,
+              promptTokens: promptTokensTotal,
+              completionTokens: completionTokensTotal,
+              totalTokens,
+              requestCount: 1,
+            },
+          }),
+          prisma.chatSession.update({
+            where: { id: currentSessionId },
+            data: {
+              provider: executionConfig.providerName,
+              messageCount: { increment: 2 },
+              totalTokens: { increment: totalTokens },
+              updatedAt: new Date(),
+            },
+          }),
+        ]);
+      } catch (err) {
+        console.error('Persistence error:', err);
+      }
+    }
+
+    if (isStream) {
+      sendEvent('assistant_response_started', { timestamp: Date.now() });
+      sendEvent('assistant_response_chunk', { delta: finalContent });
+      sendEvent('assistant_response_completed', {
+        content: finalContent,
+        totalDurationMs: Date.now() - overallStartTime,
+        provider: executionConfig.providerName,
+        model: executionConfig.model,
+        tokens: { prompt: promptTokensTotal, completion: completionTokensTotal, total: totalTokens },
+      });
+      res.end();
+    } else {
+      res.json({
+        role: 'assistant',
+        content: finalContent,
+        provider: executionConfig.providerName,
+        model: executionConfig.model,
+        tokens: { prompt: promptTokensTotal, completion: completionTokensTotal, total: totalTokens },
+      });
+    }
+  };
 
   try {
     while (rounds < maxRounds) {
@@ -556,7 +668,6 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
 
       // Final answer reached
       if (!hasTools) {
-        const finalContent = assistantMessage.content || '';
         sendEvent('activity_started', {
           id: 'act-final',
           type: 'generating_response',
@@ -570,105 +681,7 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
           durationMs: 35,
         });
 
-        // 5. Persist Assistant Response & Rollup Token Usage
-        const totalTokens = promptTokensTotal + completionTokensTotal;
-        if (currentSessionId) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          try {
-            const currentCount = await prisma.chatMessage.count({ where: { sessionId: currentSessionId } });
-            const assistantMsg = await prisma.chatMessage.create({
-              data: {
-                sessionId: currentSessionId,
-                sequenceNumber: currentCount + 1,
-                role: 'assistant',
-                content: finalContent,
-                provider: executionConfig.providerName,
-                model: executionConfig.model,
-                promptTokens: promptTokensTotal || null,
-                completionTokens: completionTokensTotal || null,
-                totalTokens: totalTokens || null,
-              },
-            });
-
-            // Persist separated tool executions (isolated payload)
-            if (recordedActivities.length > 0) {
-              await prisma.chatToolExecution.createMany({
-                data: recordedActivities.map((act) => ({
-                  messageId: assistantMsg.id,
-                  toolName: act.tool,
-                  input: act.inputSummary ?? undefined,
-                  output: act.summary ? { summary: act.summary } : undefined,
-                  isError: act.status === 'failed',
-                  durationMs: act.durationMs || 0,
-                })),
-              });
-            }
-
-            // Rollup token analytics & session counters
-            await Promise.all([
-              prisma.dailyTokenUsage.upsert({
-                where: {
-                  userId_provider_model_date: {
-                    userId: req.user!.id,
-                    provider: executionConfig.providerName,
-                    model: executionConfig.model,
-                    date: today,
-                  },
-                },
-                update: {
-                  promptTokens: { increment: promptTokensTotal },
-                  completionTokens: { increment: completionTokensTotal },
-                  totalTokens: { increment: totalTokens },
-                  requestCount: { increment: 1 },
-                },
-                create: {
-                  userId: req.user!.id,
-                  provider: executionConfig.providerName,
-                  model: executionConfig.model,
-                  date: today,
-                  promptTokens: promptTokensTotal,
-                  completionTokens: completionTokensTotal,
-                  totalTokens,
-                  requestCount: 1,
-                },
-              }),
-              prisma.chatSession.update({
-                where: { id: currentSessionId },
-                data: {
-                  provider: executionConfig.providerName,
-                  messageCount: { increment: 2 },
-                  totalTokens: { increment: totalTokens },
-                  updatedAt: new Date(),
-                },
-              }),
-            ]);
-          } catch (err) {
-            console.error('Persistence error:', err);
-          }
-        }
-
-        if (isStream) {
-          sendEvent('assistant_response_started', { timestamp: Date.now() });
-          sendEvent('assistant_response_chunk', { delta: finalContent });
-          sendEvent('assistant_response_completed', {
-            content: finalContent,
-            totalDurationMs: Date.now() - overallStartTime,
-            provider: executionConfig.providerName,
-            model: executionConfig.model,
-            tokens: { prompt: promptTokensTotal, completion: completionTokensTotal, total: totalTokens },
-          });
-          res.end();
-        } else {
-          res.json({
-            role: 'assistant',
-            content: finalContent,
-            provider: executionConfig.providerName,
-            model: executionConfig.model,
-            tokens: { prompt: promptTokensTotal, completion: completionTokensTotal, total: totalTokens },
-          });
-        }
+        await deliverFinalResponse(assistantMessage.content || '');
         return;
       }
 
@@ -679,6 +692,8 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
           sendEvent('execution_cancelled', { timestamp: Date.now() });
           return;
         }
+
+        totalToolCallsInTurn++;
 
         const toolName = toolCall.function.name;
         const separatorIdx = toolName.indexOf('__');
@@ -725,6 +740,49 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
             tool_call_id: toolCall.id,
             name: toolName,
             content: `ERROR: 403 Forbidden. You do not have permission to execute '${toolName}'. This action requires the Administrator role. Politely inform the user that their current account role ('${userRole}') does not permit adding, modifying, or deleting store items or notes.`,
+          });
+          continue;
+        }
+
+        // Enterprise E-Commerce Guardrails Check (HITL Confirmation, Pricing Bounds, Blast Radius, etc.)
+        const guardrailResult = evaluateToolGuardrails(
+          toolName,
+          args,
+          lastUserMsg,
+          totalToolCallsInTurn
+        );
+
+        if (!guardrailResult.allowed) {
+          const rejectionMsg = guardrailResult.rejectionReason || 'Action rejected by safety guardrail.';
+
+          await recordAuditLog({
+            userId: req.user?.id || null,
+            serverId: null,
+            toolName,
+            inputSummary: {
+              parameters: sanitizedArgs,
+              source: 'vynn_guardrails_engine',
+              rejectionReason: rejectionMsg,
+            },
+            durationMs: 5,
+            success: false,
+            errorMsg: rejectionMsg,
+          });
+
+          sendEvent('tool_call_completed', {
+            id: callId,
+            tool: toolName,
+            cleanTool,
+            status: 'failed',
+            error: rejectionMsg,
+            durationMs: 5,
+          });
+
+          conversation.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            name: toolName,
+            content: `GUARDRAIL_BLOCKED: ${rejectionMsg}`,
           });
           continue;
         }
@@ -838,21 +896,36 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
       }
     }
 
-    const finalContent = conversation[conversation.length - 1].content || 'Tool execution cycle completed.';
-    if (isStream) {
-      sendEvent('assistant_response_started', { timestamp: Date.now() });
-      sendEvent('assistant_response_chunk', { delta: finalContent });
-      sendEvent('assistant_response_completed', {
-        content: finalContent,
-        totalDurationMs: Date.now() - overallStartTime,
-      });
-      res.end();
+    // If the loop finished after executing tools without reaching a natural final text response,
+    // invoke the LLM one last time without tools to synthesize a clean, user-friendly markdown summary.
+    let synthesizedContent = '';
+    const lastMsg = conversation[conversation.length - 1];
+
+    if (lastMsg && (lastMsg.role === 'tool' || lastMsg.role === 'assistant')) {
+      try {
+        const summaryResponse = await aiClient.chat.completions.create({
+          model: executionConfig.model,
+          messages: [
+            ...conversation as any,
+            {
+              role: 'user',
+              content: 'Summarize the final results of the operations above into a concise, professional markdown response. Do not dump raw JSON.',
+            },
+          ],
+        });
+        synthesizedContent = summaryResponse.choices?.[0]?.message?.content || '';
+        if (summaryResponse.usage) {
+          promptTokensTotal += summaryResponse.usage.prompt_tokens || 0;
+          completionTokensTotal += summaryResponse.usage.completion_tokens || 0;
+        }
+      } catch (sumErr) {
+        synthesizedContent = typeof lastMsg.content === 'string' ? lastMsg.content : 'Operations completed.';
+      }
     } else {
-      res.json({
-        role: 'assistant',
-        content: finalContent,
-      });
+      synthesizedContent = lastMsg?.content || 'Operations completed.';
     }
+
+    await deliverFinalResponse(synthesizedContent);
   } catch (err: any) {
     if (isStream) {
       sendEvent('execution_failed', { error: `Agent execution failed: ${err.message}` });

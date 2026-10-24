@@ -148,5 +148,21 @@ export class WooCommerceClient {
   async listTags(): Promise<any[]> {
     return this.request<any[]>('/products/tags?per_page=50');
   }
+
+  // 13. Create Customer
+  async createCustomer(data: {
+    email: string;
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+    password?: string;
+    billing?: Record<string, any>;
+    shipping?: Record<string, any>;
+  }): Promise<any> {
+    return this.request<any>('/customers', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
 }
 

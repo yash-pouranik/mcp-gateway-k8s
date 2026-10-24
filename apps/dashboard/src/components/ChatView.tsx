@@ -34,6 +34,37 @@ interface ChatMessage {
   model?: string;
 }
 
+function cleanMessageContent(raw: string): string {
+  if (!raw || typeof raw !== 'string') return '';
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('{"content":') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed.content) && parsed.content[0]?.text) {
+        const innerText = parsed.content[0].text;
+        try {
+          const innerJson = JSON.parse(innerText);
+          if (Array.isArray(innerJson)) {
+            return `### Retrieved ${innerJson.length} item(s):\n\n` +
+              innerJson.slice(0, 10).map((item: any) => {
+                const title = item.name || item.title || item.id || 'Item';
+                const price = item.price || item.regular_price ? ` — $${item.price || item.regular_price}` : '';
+                return `- **#${item.id || ''} ${title}**${price} (Status: ${item.status || 'unknown'})`;
+              }).join('\n') +
+              (innerJson.length > 10 ? `\n\n*...and ${innerJson.length - 10} more items.*` : '');
+          }
+        } catch (_) {
+          return innerText;
+        }
+        return innerText;
+      }
+    } catch (_) {
+      // not JSON envelope, return as-is
+    }
+  }
+  return raw;
+}
+
 function generateActivitySummary(activities: ActivityItem[], totalDurationMs?: number): string {
   if (!activities || activities.length === 0) return 'Completed';
 
@@ -829,7 +860,7 @@ export const ChatView: React.FC = () => {
                                 ),
                               }}
                             >
-                              {m.content}
+                              {cleanMessageContent(m.content)}
                             </ReactMarkdown>
                           </div>
                         )}
