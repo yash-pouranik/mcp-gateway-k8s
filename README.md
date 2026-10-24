@@ -256,3 +256,27 @@ To deploy to a production Linux VPS running k3s:
    helm upgrade --install extra-mcps helm/charts/extra-mcps -n extra-mcps -f helm/values-prod.yaml
    helm upgrade --install gateway helm/charts/gateway -n gateway -f helm/values-prod.yaml
    ```
+
+The live deployment at `urbackend.in` uses `helm/values-aws.yaml` (an AWS EC2 k3s variant of `values-prod.yaml`; secret values in it are placeholders) and is built and deployed by `deploy-aws.sh`.
+
+---
+
+## Upgrades & Rollback (Helm)
+
+Every `helm upgrade` creates a new numbered release revision, so any component can be upgraded or rolled back on its own.
+
+**Upgrade** (e.g. a new gateway image): build and import the new tag, bump `gateway.image.tag` in the values file, then:
+```bash
+helm upgrade gateway helm/charts/gateway -n gateway -f helm/values-prod.yaml
+kubectl rollout status deployment/gateway -n gateway
+```
+Deployments use rolling updates; readiness probes keep traffic on the old pod until the new one is ready. The same pattern applies to `woocommerce-store` (WordPress/MCP image tags) and `extra-mcps`.
+
+**Rollback**:
+```bash
+helm history gateway -n gateway        # list revisions
+helm rollback gateway <REVISION> -n gateway
+kubectl rollout status deployment/gateway -n gateway
+```
+
+**Data safety**: rollbacks only change Kubernetes manifests; PVCs (MariaDB, WordPress, PostgreSQL) are kept. Prisma migrations are forward-only, so take a `pg_dump` before upgrades that include schema migrations, and a `mariadb-dump` before upgrading WordPress/WooCommerce.
