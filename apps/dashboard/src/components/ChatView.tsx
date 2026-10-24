@@ -40,23 +40,33 @@ function cleanMessageContent(raw: string): string {
   if (trimmed.startsWith('{"content":') && trimmed.endsWith('}')) {
     try {
       const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed.content) && parsed.content[0]?.text) {
-        const innerText = parsed.content[0].text;
-        try {
-          const innerJson = JSON.parse(innerText);
-          if (Array.isArray(innerJson)) {
-            return `### Retrieved ${innerJson.length} item(s):\n\n` +
-              innerJson.slice(0, 10).map((item: any) => {
-                const title = item.name || item.title || item.id || 'Item';
-                const price = item.price || item.regular_price ? ` — $${item.price || item.regular_price}` : '';
-                return `- **#${item.id || ''} ${title}**${price} (Status: ${item.status || 'unknown'})`;
-              }).join('\n') +
-              (innerJson.length > 10 ? `\n\n*...and ${innerJson.length - 10} more items.*` : '');
+      if (Array.isArray(parsed.content)) {
+        const textBlocks: string[] = [];
+        for (const block of parsed.content) {
+          if (block.type === 'text' && typeof block.text === 'string') {
+            textBlocks.push(block.text);
           }
-        } catch (_) {
-          return innerText;
         }
-        return innerText;
+        if (textBlocks.length > 0) {
+          const combined = textBlocks.join('\n\n');
+          try {
+            const innerJson = JSON.parse(combined);
+            if (Array.isArray(innerJson)) {
+              return `### Retrieved ${innerJson.length} item(s):\n\n` +
+                innerJson.slice(0, 10).map((item: any) => {
+                  const title = item.name || item.title || `Item #${item.id || ''}`;
+                  const rawPrice = item.price !== undefined && item.price !== '' ? item.price : item.regular_price;
+                  const priceStr = (rawPrice !== undefined && rawPrice !== null && rawPrice !== '') ? ` — Price: ${rawPrice}` : '';
+                  const statusStr = item.status ? ` (Status: ${item.status})` : '';
+                  return `- **#${item.id || ''} ${title}**${priceStr}${statusStr}`;
+                }).join('\n') +
+                (innerJson.length > 10 ? `\n\n*...and ${innerJson.length - 10} more items.*` : '');
+            }
+          } catch (_) {
+            return combined;
+          }
+          return combined;
+        }
       }
     } catch (_) {
       // not JSON envelope, return as-is

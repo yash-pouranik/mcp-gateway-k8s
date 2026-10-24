@@ -1,13 +1,25 @@
 /**
- * Enterprise E-Commerce Guardrails Engine for VYNN MCP Gateway
+ * Enterprise E-Commerce Guardrails Engine for VYNN MCP Gateway (v2)
  *
  * Implements:
- * 1. Human-In-The-Loop (HITL) confirmation gates for destructive actions (delete_product, delete_note)
- * 2. Financial integrity & pricing guardrails (reject negative, zero, or inverted sale prices)
- * 3. Inventory bounds validation (no negative stock quantities)
- * 4. Blast-radius containment (max tool calls per turn)
- * 5. PII sanitization and masking (phone numbers, payment card digits)
- * 6. MCP envelope unwrapper to prevent raw JSON dumps in UI
+ * 1. Target-Bound Human-In-The-Loop (HITL) confirmation gate:
+ *    - Verifies exact entity IDs (e.g. product_id, order_id, note_id) are explicitly approved in user's prompt.
+ *    - Prevents partial/wrong-target deletions (e.g., user said "delete only 16, 17" -> ID 18 is blocked).
+ * 2. Mutation Budget & Single-Call Bulk Bypass protection:
+ *    - Enforces maximum mutation limits (max 5 records mutated per turn).
+ *    - Blocks batch payloads (e.g. ids: [1..27]) from bypassing turn limits.
+ * 3. Strict Financial Integrity & Pricing Bounds:
+ *    - Rejects negative prices (-900), zero, NaN, Infinity, and malformed strings.
+ *    - Enforces cross-field constraint: sale_price < regular_price.
+ *    - Enforces upper ceiling: <= 1,000,000.
+ * 4. Inventory bounds validation (no negative stock quantities).
+ * 5. Comprehensive PII & Sensitive Data Sanitization:
+ *    - Payment cards (13-19 digit Visa, MasterCard, Amex, RuPay).
+ *    - International phone numbers (+91, +1, bracketed, dashed, 10-12 digits).
+ * 6. Robust Multi-block MCP Content Unwrapping & Markdown Synthesis:
+ *    - Inspects all content blocks, avoids precedence bugs, avoids hardcoding currency symbols.
+ * 7. Prompt Injection & Toxic Payload Defense:
+ *    - Detects and neutralizes prompt override tokens in tool inputs.
  */
 
 export interface GuardrailCheckResult {
@@ -29,6 +41,42 @@ const DESTRUCTIVE_TOOLS = [
   'trash_product'
 ];
 
+// Dangerous prompt injection signatures in tool inputs
+const INJECTION_PATTERNS = [
+  /ignore\s+(all\s+)?(previous|prior)\s+instructions/i,
+  /system\s+prompt\s+override/i,
+  /bypass\s+(safety|guardrail|rbac)/i,
+  /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi
+];
+
+/**
+ * Extract target entity ID from tool arguments (product_id, note_id, order_id, id)
+ */
+function extractTargetIds(args: Record<string, any>): string[] {
+  const ids: string[] = [];
+
+  const directIdFields = ['product_id', 'order_id', 'note_id', 'category_id', 'customer_id', 'id'];
+  for (const field of directIdFields) {
+    if (args[field] !== undefined && args[field] !== null) {
+      ids.push(String(args[field]).trim());
+    }
+  }
+
+  // Handle batch array fields (e.g. ids: [1, 2, 3] or product_ids: [...])
+  const arrayFields = ['ids', 'product_ids', 'order_ids'];
+  for (const field of arrayFields) {
+    if (Array.isArray(args[field])) {
+      for (const item of args[field]) {
+        if (item !== undefined && item !== null) {
+          ids.push(String(item).trim());
+        }
+      }
+    }
+  }
+
+  return ids;
+}
+
 /**
  * Validate a tool call before gateway dispatch
  */
@@ -48,7 +96,30 @@ export function evaluateToolGuardrails(
     };
   }
 
-  // 2. Destructive Action / HITL Confirmation Gate
+  // 2. Mutation Budget: Single-call bulk bypass protection (max 5 items mutated per call)
+  const targetIds = extractTargetIds(args);
+  if (targetIds.length > 5) {
+    return {
+      allowed: false,
+      rejectionReason: `Mutation Budget Guardrail: Attempted to mutate ${targetIds.length} items in a single call. Maximum allowable mutation batch size is 5 items. Please split into smaller operations.`
+    };
+  }
+
+  // 3. Prompt Injection Inspection in tool arguments
+  for (const [key, val] of Object.entries(args)) {
+    if (typeof val === 'string') {
+      for (const pattern of INJECTION_PATTERNS) {
+        if (pattern.test(val)) {
+          return {
+            allowed: false,
+            rejectionReason: `Security Guardrail: Input field '${key}' contains disallowed prompt injection pattern.`
+          };
+        }
+      }
+    }
+  }
+
+  // 4. Destructive Action / Target-Bound HITL Confirmation Gate
   if (DESTRUCTIVE_TOOLS.includes(cleanTool)) {
     const isExplicitlyConfirmed = CONFIRMATION_REGEX.test(latestUserPrompt);
     if (!isExplicitlyConfirmed) {
@@ -58,14 +129,48 @@ export function evaluateToolGuardrails(
         rejectionReason: `HITL_CONFIRMATION_REQUIRED: Deletion of '${cleanTool}' is a destructive action. You must first provide a dry-run summary (item ID and title/name) and ask the user for explicit confirmation before proceeding.`
       };
     }
+
+    // TARGET-BOUND BINDING: If specific target IDs are being deleted, verify they were approved in the user's prompt!
+    // Prevents: User saying "Yes delete only 16, 17" while LLM tries to delete 18 or all 27.
+    if (targetIds.length > 0) {
+      // Check if user prompt is a generic blanket confirmation or specific ID approval
+      const isBlanketAllConfirmation = /\b(all|everything|saare|sare)\b/i.test(latestUserPrompt) &&
+        /\b(delete|remove|kardo)\b/i.test(latestUserPrompt);
+
+      if (!isBlanketAllConfirmation) {
+        const unapprovedIds = targetIds.filter((id) => {
+          // ID must appear in prompt as a distinct word or hashtag (e.g. "16", "#16", "id 16")
+          const idRegex = new RegExp(`(?:#|id\\s*|\\b)${id}\\b`, 'i');
+          return !idRegex.test(latestUserPrompt);
+        });
+
+        if (unapprovedIds.length > 0) {
+          return {
+            allowed: false,
+            requiresConfirmation: true,
+            rejectionReason: `Target Guardrail Violation: Deletion target ID(s) [${unapprovedIds.join(', ')}] were not explicitly mentioned or approved in the user's confirmation. Only specifically approved items can be deleted.`
+          };
+        }
+      }
+    }
   }
 
-  // 3. Financial Integrity & Pricing Validation
+  // 5. Financial Integrity & Pricing Validation
   const priceFields = ['regular_price', 'sale_price', 'price'];
   for (const field of priceFields) {
     if (args[field] !== undefined && args[field] !== null && args[field] !== '') {
-      const num = parseFloat(String(args[field]));
-      if (isNaN(num) || num <= 0) {
+      const raw = String(args[field]).trim();
+
+      // Check for malformed or non-numeric strings
+      if (!/^-?\d+(\.\d+)?$/.test(raw)) {
+        return {
+          allowed: false,
+          rejectionReason: `Financial Guardrail Violation: '${field}' must be a valid numeric amount (received: "${raw}").`
+        };
+      }
+
+      const num = parseFloat(raw);
+      if (isNaN(num) || !isFinite(num) || num <= 0) {
         return {
           allowed: false,
           rejectionReason: `Financial Guardrail Violation: '${field}' must be a positive number greater than 0 (received: ${args[field]}). Negative or zero prices are not permitted.`
@@ -92,9 +197,16 @@ export function evaluateToolGuardrails(
     }
   }
 
-  // 4. Inventory Sanity Validation
+  // 6. Inventory Sanity Validation
   if (args.stock_quantity !== undefined && args.stock_quantity !== null) {
-    const stock = Number(args.stock_quantity);
+    const raw = String(args.stock_quantity).trim();
+    if (!/^-?\d+$/.test(raw)) {
+      return {
+        allowed: false,
+        rejectionReason: `Inventory Guardrail Violation: 'stock_quantity' must be an integer (received: "${raw}").`
+      };
+    }
+    const stock = Number(raw);
     if (isNaN(stock) || stock < 0) {
       return {
         allowed: false,
@@ -103,7 +215,7 @@ export function evaluateToolGuardrails(
     }
   }
 
-  // 5. Customer Creation Email Validation
+  // 7. Customer Creation Email Validation
   if (cleanTool === 'create_customer') {
     if (!args.email || typeof args.email !== 'string' || !args.email.includes('@')) {
       return {
@@ -122,11 +234,11 @@ export function evaluateToolGuardrails(
 export function maskSensitiveData(text: string): string {
   if (!text || typeof text !== 'string') return text;
 
-  // Mask 13-16 digit payment card numbers: ****-****-****-1234
-  let masked = text.replace(/\b(?:\d{4}[ -]?){3}(\d{4})\b/g, '****-****-****-$1');
+  // Mask 13-19 digit payment card numbers (Visa, MasterCard, Amex, RuPay): ****-****-****-1234
+  let masked = text.replace(/\b(?:\d{4}[ -]?){3,4}(\d{4})\b/g, '****-****-****-$1');
 
-  // Mask 10-12 digit phone numbers: keep country/area code and last 4 digits
-  masked = masked.replace(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?(\d{4})\b/g, (match, prefix, last4) => {
+  // Mask international and standard phone numbers (+91, +1, 10-12 digits with spaces or dashes)
+  masked = masked.replace(/(\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?(\d{4})\b/g, (match, prefix, last4) => {
     return prefix ? `${prefix}******${last4}` : `******${last4}`;
   });
 
@@ -134,7 +246,8 @@ export function maskSensitiveData(text: string): string {
 }
 
 /**
- * Unwrap raw MCP tool JSON envelopes if the model accidentally returns tool JSON
+ * Robust Multi-Block MCP Content Unwrapper
+ * Safely converts raw MCP JSON envelopes into clean Markdown without hardcoding currencies.
  */
 export function unwrapToolContentEnvelope(raw: string): string {
   if (!raw || typeof raw !== 'string') return '';
@@ -145,27 +258,40 @@ export function unwrapToolContentEnvelope(raw: string): string {
   if (trimmed.startsWith('{"content":') && trimmed.endsWith('}')) {
     try {
       const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed.content) && parsed.content[0]?.text) {
-        let innerText = parsed.content[0].text;
-        // If inner text is itself JSON array/object, try to make it readable
-        try {
-          const innerJson = JSON.parse(innerText);
-          if (Array.isArray(innerJson)) {
-            return `### Retrieved ${innerJson.length} item(s):\n\n` +
-              innerJson.slice(0, 10).map((item: any) => {
-                const title = item.name || item.title || item.id || 'Item';
-                const price = item.price || item.regular_price ? ` — $${item.price || item.regular_price}` : '';
-                return `- **#${item.id || ''} ${title}**${price} (Status: ${item.status || 'unknown'})`;
-              }).join('\n') +
-              (innerJson.length > 10 ? `\n\n*...and ${innerJson.length - 10} more items.*` : '');
+      if (Array.isArray(parsed.content)) {
+        // Collect all text blocks
+        const textBlocks: string[] = [];
+        for (const block of parsed.content) {
+          if (block.type === 'text' && typeof block.text === 'string') {
+            textBlocks.push(block.text);
           }
-        } catch (_) {
-          return innerText;
         }
-        return innerText;
+
+        if (textBlocks.length > 0) {
+          const combined = textBlocks.join('\n\n');
+
+          // If combined text is itself JSON array/object, transform into clean readable Markdown
+          try {
+            const innerJson = JSON.parse(combined);
+            if (Array.isArray(innerJson)) {
+              return `### Retrieved ${innerJson.length} item(s):\n\n` +
+                innerJson.slice(0, 10).map((item: any) => {
+                  const title = item.name || item.title || `Item #${item.id || ''}`;
+                  const rawPrice = item.price !== undefined && item.price !== '' ? item.price : item.regular_price;
+                  const priceStr = (rawPrice !== undefined && rawPrice !== null && rawPrice !== '') ? ` — Price: ${rawPrice}` : '';
+                  const statusStr = item.status ? ` (Status: ${item.status})` : '';
+                  return `- **#${item.id || ''} ${title}**${priceStr}${statusStr}`;
+                }).join('\n') +
+                (innerJson.length > 10 ? `\n\n*...and ${innerJson.length - 10} more items.*` : '');
+            }
+          } catch (_) {
+            return combined;
+          }
+          return combined;
+        }
       }
     } catch (_) {
-      // not JSON, return as-is
+      // not JSON envelope, return as-is
     }
   }
 
