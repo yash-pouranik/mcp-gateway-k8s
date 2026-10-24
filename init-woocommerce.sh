@@ -79,11 +79,6 @@ if ($existing) {
 echo "📄 Creating default WooCommerce pages (Shop, Cart, Checkout)..."
 kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.phar wc tool run install_pages --user=admin --allow-root || true
 
-echo "🛍️ Seeding demo products into catalog..."
-kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.phar wc product create --name="Wireless Noise-Canceling Headphones" --type=simple --regular_price="149.99" --description="Premium Bluetooth active noise-canceling over-ear headphones." --user=admin --allow-root || true
-kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.phar wc product create --name="Ergonomic Mechanical Keyboard" --type=simple --regular_price="89.50" --description="Hot-swappable RGB mechanical keyboard with tactile switches." --user=admin --allow-root || true
-kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.phar wc product create --name="Ultra-Wide 4K Gaming Monitor" --type=simple --regular_price="499.00" --description="34-inch curved gaming display with 144Hz refresh rate." --user=admin --allow-root || true
-
 echo "🔄 Flushing rewrite rules..."
 kubectl --kubeconfig "$KUBECONFIG" exec -n woocommerce "$WP_POD" -- php wp-cli.phar rewrite flush --path=/var/www/html --allow-root
 
