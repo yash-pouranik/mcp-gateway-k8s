@@ -110,6 +110,7 @@ export interface AuditLog {
     id: string;
     name: string;
     email: string;
+    role?: string;
   };
   server?: {
     id: string;

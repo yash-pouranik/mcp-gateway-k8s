@@ -101,7 +101,11 @@ export function issueAccessToken(params: {
       token_type: 'oauth_access_token',
     },
     JWT_SECRET,
-    { issuer: ISSUER, expiresIn: '1h' }
+    {
+      issuer: ISSUER,
+      audience: [ISSUER, `${ISSUER}/mcp`],
+      expiresIn: '1h',
+    }
   );
 }
 

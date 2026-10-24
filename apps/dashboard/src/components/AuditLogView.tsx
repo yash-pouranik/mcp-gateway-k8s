@@ -249,6 +249,71 @@ const MinimalDateFilter: React.FC<{
   );
 };
 
+// Distinct Origin & Caller Badges (OAuth AI / API Key / Internal Agent / Direct)
+const renderCallerBadge = (log: AuditLog) => {
+  const summary = log.inputSummary || {};
+  const authType = summary.authType;
+  const callerName = summary.callerName;
+  const source = summary.source || summary.clientSource;
+
+  // 1. Claude OAuth
+  if (source === 'claude_oauth' || callerName?.toLowerCase().includes('claude')) {
+    return (
+      <span className="inline-flex items-center space-x-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-950/70 text-purple-300 border border-purple-800/60 shadow-sm">
+        <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+        <span>Claude (OAuth)</span>
+      </span>
+    );
+  }
+
+  // 2. ChatGPT OAuth
+  if (source === 'chatgpt_oauth' || callerName?.toLowerCase().includes('chatgpt') || callerName?.toLowerCase().includes('openai')) {
+    return (
+      <span className="inline-flex items-center space-x-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-300 border border-emerald-800/60 shadow-sm">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+        <span>ChatGPT (OAuth)</span>
+      </span>
+    );
+  }
+
+  // 3. Generic OAuth AI Client
+  if (authType === 'oauth' || source === 'oauth_client' || summary.clientId) {
+    return (
+      <span className="inline-flex items-center space-x-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-800/60">
+        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+        <span>{callerName || 'OAuth Client'}</span>
+      </span>
+    );
+  }
+
+  // 4. API Key (external developer / curl / script)
+  if (summary.apiKeyName || summary.keyName || summary.apiKeyPrefix || authType === 'api_key') {
+    return (
+      <span className="inline-flex items-center space-x-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-300 border border-amber-800/50">
+        <span>🔑</span>
+        <span className="truncate max-w-[110px]">{summary.apiKeyName || summary.keyName || 'API Key'}</span>
+      </span>
+    );
+  }
+
+  // 5. Dashboard Chat Agent
+  if (source === 'vynn_chat_agent' || authType === 'dashboard_chat' || source === 'dashboard_chat_agent') {
+    return (
+      <span className="inline-flex items-center space-x-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-orange-950/50 text-cf-orange border border-orange-800/60">
+        <span>🤖</span>
+        <span>VYNN Agent</span>
+      </span>
+    );
+  }
+
+  // 6. Direct Dashboard Session
+  return (
+    <span className="inline-flex items-center text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
+      Direct Session
+    </span>
+  );
+};
+
 export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [total, setTotal] = useState(0);
@@ -568,20 +633,26 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap">
                           {log.user ? (
-                            <div className="flex items-center space-x-1.5">
-                              <span className="font-medium text-white">{log.user.name}</span>
-                              {log.inputSummary?.keyName ? (
-                                <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
-                                  {log.inputSummary.keyName}
+                            <div className="flex flex-col space-y-1">
+                              <div className="flex items-center space-x-1.5">
+                                <span className="font-medium text-white">{log.user.name}</span>
+                                <span
+                                  className={`text-[9px] font-mono px-1 rounded uppercase tracking-wider ${
+                                    log.user?.role === 'admin'
+                                      ? 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                                      : 'bg-zinc-900 text-zinc-500 border border-zinc-850'
+                                  }`}
+                                >
+                                  {log.user?.role || 'member'}
                                 </span>
-                              ) : log.inputSummary?.source === 'vynn_chat_agent' ? (
-                                <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-zinc-900 text-cf-orange border border-zinc-800">
-                                  agent
-                                </span>
-                              ) : null}
+                              </div>
+                              <div>{renderCallerBadge(log)}</div>
                             </div>
                           ) : (
-                            <span className="text-zinc-500 font-mono text-[11px]">Unauthenticated</span>
+                            <div className="flex flex-col space-y-1">
+                              <span className="text-zinc-500 font-mono text-[11px]">Unauthenticated</span>
+                              <div>{renderCallerBadge(log)}</div>
+                            </div>
                           )}
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap text-xs font-mono text-zinc-200">
@@ -615,7 +686,15 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
                               <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-zinc-400 pb-2 border-b border-zinc-900">
                                 <span>Log ID: <span className="text-zinc-200">{log.id}</span></span>
                                 <span>·</span>
-                                <span>Actor: <span className="text-zinc-200">{log.user?.email || 'N/A'}</span></span>
+                                <span>User: <span className="text-zinc-200">{log.user?.email || 'N/A'}</span> <span className="text-zinc-500">({log.user?.role || 'unauth'})</span></span>
+                                <span>·</span>
+                                <span>Origin: <span className="text-zinc-200">{log.inputSummary?.callerName || (log.inputSummary?.apiKeyName ? `API Key: ${log.inputSummary.apiKeyName}` : log.inputSummary?.source || 'Dashboard')}</span></span>
+                                {log.inputSummary?.oauthScope && (
+                                  <>
+                                    <span>·</span>
+                                    <span>Scope: <span className="text-zinc-200">{log.inputSummary.oauthScope}</span></span>
+                                  </>
+                                )}
                                 <span>·</span>
                                 <span>Duration: <span className="text-zinc-200">{log.durationMs}ms</span></span>
                                 {log.inputSummary?.apiKeyPrefix && (
@@ -694,10 +773,10 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
                           {log.toolName}
                         </span>
                       </div>
-                      <div className="flex items-center space-x-1.5 text-[10px] text-zinc-400 font-mono truncate">
-                        <span className="text-zinc-300 font-sans">{log.user?.name || 'Unauth'}</span>
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-zinc-400 font-mono">
+                        <span className="text-zinc-300 font-sans font-medium">{log.user?.name || 'Unauth'}</span>
                         <span className="text-zinc-600">·</span>
-                        <span className="truncate">{log.server?.name || 'Internal'}</span>
+                        {renderCallerBadge(log)}
                         <span className="text-zinc-600">·</span>
                         <span className="text-zinc-500">{log.durationMs}ms</span>
                       </div>

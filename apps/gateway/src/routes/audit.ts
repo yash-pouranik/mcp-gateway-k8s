@@ -61,7 +61,7 @@ router.get('/', requireUserAuth, async (req: Request, res: Response): Promise<vo
       where,
       include: {
         user: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true, email: true, role: true },
         },
         server: {
           select: { id: true, name: true, slug: true },

@@ -88,7 +88,7 @@ router.get('/.well-known/oauth-protected-resource', (_req: Request, res: Respons
   res.json({
     resource: `${ISSUER}/mcp`,
     authorization_servers: [ISSUER],
-    scopes_supported: ['mcp:read', 'mcp:write', 'mcp:admin'],
+    scopes_supported: ['mcp:read', 'mcp:write', 'mcp:admin', 'offline_access'],
     bearer_methods_supported: ['header'],
     resource_documentation: `${ISSUER}/docs`,
   });
@@ -108,7 +108,7 @@ router.get('/.well-known/oauth-authorization-server', (_req: Request, res: Respo
     response_types_supported: ['code'],
     grant_types_supported: ['authorization_code', 'client_credentials', 'refresh_token'],
     token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic', 'none'],
-    scopes_supported: ['mcp:read', 'mcp:write', 'mcp:admin'],
+    scopes_supported: ['mcp:read', 'mcp:write', 'mcp:admin', 'offline_access'],
     code_challenge_methods_supported: ['S256', 'plain'],
     service_documentation: `${ISSUER}/docs`,
   });
@@ -126,7 +126,7 @@ router.get('/.well-known/openid-configuration', (_req: Request, res: Response): 
     response_types_supported: ['code'],
     grant_types_supported: ['authorization_code', 'client_credentials', 'refresh_token'],
     token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic', 'none'],
-    scopes_supported: ['mcp:read', 'mcp:write', 'mcp:admin'],
+    scopes_supported: ['mcp:read', 'mcp:write', 'mcp:admin', 'offline_access'],
     code_challenge_methods_supported: ['S256', 'plain'],
   });
 });
@@ -555,6 +555,16 @@ router.get('/oauth/authorize', async (req: Request, res: Response): Promise<void
       </div>
     </div>
 
+    <div style="background: rgba(24, 24, 27, 0.7); border: 1px solid #27272a; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px; font-size: 11px; color: #a1a1aa; line-height: 1.45;">
+      <div style="display: flex; items-center; gap: 6px; color: #f38020; font-weight: 600; margin-bottom: 3px;">
+        <svg style="width: 14px; height: 14px; shrink-0;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+        <span>Role-Based Access Control (RBAC)</span>
+      </div>
+      <span>Permissions granted are strictly bounded by your user account role. <strong>Admin</strong> receives full read/write access. <strong>Member</strong> is automatically capped to read-only tools regardless of requested scopes.</span>
+    </div>
+
     <form method="POST" action="/oauth/authorize" id="consent-form">
       <input type="hidden" name="client_id" value="${escapeHtml(client_id)}"/>
       <input type="hidden" name="redirect_uri" value="${escapeHtml(redirect_uri)}"/>
@@ -676,12 +686,40 @@ router.post('/oauth/authorize', async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    // Generate authorization code
+    // RBAC Scope Assignment:
+    // Granted permissions are strictly bounded by the authenticated user's role, NOT dictated solely by the AI client!
+    const requestedScopes = (scope || 'mcp:read').split(' ').filter(Boolean);
+    let finalScopes: string[] = ['mcp:read'];
+
+    if (user.role === 'admin') {
+      // Admins receive read, write, and admin permissions
+      for (const s of requestedScopes) {
+        if (['mcp:read', 'mcp:write', 'mcp:admin'].includes(s)) {
+          if (!finalScopes.includes(s)) finalScopes.push(s);
+        }
+      }
+      // Ensure admin has full operational access
+      if (!finalScopes.includes('mcp:write')) finalScopes.push('mcp:write');
+      if (!finalScopes.includes('mcp:admin')) finalScopes.push('mcp:admin');
+    } else {
+      // Regular members: Strictly bounded to read-only tools!
+      // Mutating scopes (mcp:write, mcp:admin) are stripped and denied.
+      finalScopes = ['mcp:read'];
+    }
+
+    // Preserve offline_access if requested (for persistent refresh tokens)
+    if (requestedScopes.includes('offline_access')) {
+      finalScopes.push('offline_access');
+    }
+
+    const grantedScope = finalScopes.join(' ');
+
+    // Generate authorization code with RBAC-enforced scope
     const code = await generateAuthCode({
       clientId: client_id,
       userId: user.id,
       redirectUri: redirect_uri,
-      scope: scope || 'mcp:read',
+      scope: grantedScope,
       codeChallenge: code_challenge || undefined,
       codeChallengeMethod: code_challenge_method || undefined,
     });

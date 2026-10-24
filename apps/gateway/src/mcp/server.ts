@@ -37,13 +37,49 @@ export function isRestrictedTool(toolName: string): boolean {
  * Compliant with Streamable HTTP MCP transport specifications.
  */
 export async function handleMcpRequest(req: Request, res: Response): Promise<void> {
+  const ISSUER = process.env.OAUTH_ISSUER || 'https://vynn.urbackend.in';
+
+  // 1. Handle GET /mcp (Capabilities Discovery or SSE stream)
+  if (req.method === 'GET') {
+    const isSSE = req.headers.accept?.includes('text/event-stream');
+    if (isSSE) {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'MCP-Protocol-Version': '2026-07-28',
+      });
+      res.write(`event: endpoint\ndata: ${ISSUER}/mcp\n\n`);
+      const interval = setInterval(() => {
+        res.write(': ping\n\n');
+      }, 15000);
+      req.on('close', () => clearInterval(interval));
+      return;
+    }
+
+    // Standard HTTP GET capability probe
+    res.status(200).json({
+      status: 'ok',
+      protocolVersion: '2026-07-28',
+      capabilities: { tools: { listChanged: true } },
+      serverInfo: { name: 'mcp-gateway-hub', version: '2.0.0' },
+      endpoint: `${ISSUER}/mcp`,
+    });
+    return;
+  }
+
   const jsonRpcMessage = req.body;
 
-  if (!jsonRpcMessage || typeof jsonRpcMessage !== 'object') {
-    res.status(400).json({
+  // Handle empty probe or missing body
+  if (!jsonRpcMessage || typeof jsonRpcMessage !== 'object' || Object.keys(jsonRpcMessage).length === 0) {
+    res.status(200).json({
       jsonrpc: '2.0',
       id: null,
-      error: { code: -32600, message: 'Invalid Request: body must be a JSON-RPC object' },
+      result: {
+        protocolVersion: '2026-07-28',
+        capabilities: { tools: { listChanged: true } },
+        serverInfo: { name: 'mcp-gateway-hub', version: '2.0.0' },
+      },
     });
     return;
   }
@@ -60,6 +96,32 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
     '2026-07-28';
 
   res.setHeader('MCP-Protocol-Version', String(requestedVersion));
+
+  // Determine rich caller context for audit logging
+  let authType = 'dashboard_jwt';
+  let callerName = user?.name || 'Dashboard User';
+  let clientSource = 'dashboard';
+
+  if (req.oauthClientId) {
+    authType = 'oauth';
+    const ua = (req.headers['user-agent'] || '').toLowerCase();
+    const clientNameLower = (req.oauthClientName || '').toLowerCase();
+
+    if (clientNameLower.includes('claude') || ua.includes('claude')) {
+      callerName = 'Claude (OAuth)';
+      clientSource = 'claude_oauth';
+    } else if (clientNameLower.includes('chatgpt') || ua.includes('chatgpt') || ua.includes('openai')) {
+      callerName = 'ChatGPT (OAuth)';
+      clientSource = 'chatgpt_oauth';
+    } else {
+      callerName = req.oauthClientName ? `${req.oauthClientName} (OAuth)` : `OAuth Client (${req.oauthClientId.slice(0, 14)})`;
+      clientSource = 'oauth_client';
+    }
+  } else if (req.apiKeyPrefix) {
+    authType = 'api_key';
+    callerName = `API Key: ${req.apiKeyName || req.apiKeyPrefix}`;
+    clientSource = 'api_key';
+  }
 
   try {
     let result: any;
@@ -143,12 +205,18 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
           toolName,
           inputSummary: {
             parameters: toolArgs,
+            authType,
+            callerName,
+            clientSource,
+            source: clientSource,
+            clientId: req.oauthClientId || null,
+            oauthScope: req.oauthScope || null,
             apiKeyId: req.apiKeyId || null,
             apiKeyPrefix: req.apiKeyPrefix || null,
             keyPrefix: req.apiKeyPrefix || null,
             apiKeyName: req.apiKeyName || null,
             keyName: req.apiKeyName || null,
-            source: req.apiKeyPrefix ? 'external_client' : 'dashboard_jwt',
+            userRole,
             rejectionReason: 'RBAC_PERMISSION_DENIED',
           },
           durationMs: Date.now() - startTime,
@@ -188,12 +256,18 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
           inputSummary: {
             parameters: toolArgs,
             response: result,
+            authType,
+            callerName,
+            clientSource,
+            source: clientSource,
+            clientId: req.oauthClientId || null,
+            oauthScope: req.oauthScope || null,
             apiKeyId: req.apiKeyId || null,
             apiKeyPrefix: req.apiKeyPrefix || null,
             keyPrefix: req.apiKeyPrefix || null,
             apiKeyName: req.apiKeyName || null,
             keyName: req.apiKeyName || null,
-            source: req.apiKeyPrefix ? 'external_client' : 'dashboard_jwt',
+            userRole,
           },
           durationMs,
           success: true,
@@ -220,12 +294,18 @@ export async function handleMcpRequest(req: Request, res: Response): Promise<voi
           toolName,
           inputSummary: {
             parameters: toolArgs,
+            authType,
+            callerName,
+            clientSource,
+            source: clientSource,
+            clientId: req.oauthClientId || null,
+            oauthScope: req.oauthScope || null,
             apiKeyId: req.apiKeyId || null,
             apiKeyPrefix: req.apiKeyPrefix || null,
             keyPrefix: req.apiKeyPrefix || null,
             apiKeyName: req.apiKeyName || null,
             keyName: req.apiKeyName || null,
-            source: req.apiKeyPrefix ? 'external_client' : 'dashboard_jwt',
+            userRole,
           },
           durationMs,
           success: false,

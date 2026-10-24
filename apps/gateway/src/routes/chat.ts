@@ -718,7 +718,10 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
             toolName,
             inputSummary: {
               parameters: sanitizedArgs,
-              source: 'dashboard_chat_agent',
+              authType: 'dashboard_chat',
+              callerName: 'Dashboard Chat Agent',
+              clientSource: 'vynn_chat_agent',
+              source: 'vynn_chat_agent',
               rejectionReason: 'RBAC_PERMISSION_DENIED',
             },
             durationMs: 5,
@@ -835,6 +838,9 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
             inputSummary: {
               parameters: sanitizedArgs,
               response: result,
+              authType: 'dashboard_chat',
+              callerName: 'Dashboard Chat Agent',
+              clientSource: 'vynn_chat_agent',
               source: 'vynn_chat_agent',
             },
             durationMs: duration,
@@ -877,6 +883,9 @@ You are currently assisting ${userName} (${userEmail}, Role: ${userRole}). Greet
             toolName,
             inputSummary: {
               parameters: sanitizedArgs,
+              authType: 'dashboard_chat',
+              callerName: 'Dashboard Chat Agent',
+              clientSource: 'vynn_chat_agent',
               source: 'vynn_chat_agent',
             },
             durationMs: duration,

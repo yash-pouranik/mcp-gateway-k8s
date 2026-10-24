@@ -23,6 +23,7 @@ declare global {
       apiKeyName?: string;
       oauthScope?: string;
       oauthClientId?: string;
+      oauthClientName?: string;
     }
   }
 }
@@ -193,6 +194,20 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
       if (rawPayload.token_type === 'oauth_access_token' && rawPayload.scope) {
         req.oauthScope = rawPayload.scope as string;
         req.oauthClientId = rawPayload.client_id as string;
+
+        if (req.oauthClientId) {
+          try {
+            const clientRecord = await prisma.oAuthClient.findUnique({
+              where: { clientId: req.oauthClientId },
+              select: { name: true },
+            });
+            if (clientRecord?.name) {
+              req.oauthClientName = clientRecord.name;
+            }
+          } catch {
+            // Non-critical metadata lookup
+          }
+        }
       }
 
       next();
