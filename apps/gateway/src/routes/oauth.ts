@@ -80,6 +80,20 @@ function extractClientCredentials(req: Request): { clientId?: string; clientSecr
 }
 
 // ============================================================
+// RFC 9728: OAuth 2.0 Protected Resource Metadata (PUBLIC - no auth)
+// Used by Claude Custom Connectors and Model Context Protocol clients
+// ============================================================
+router.get('/.well-known/oauth-protected-resource', (_req: Request, res: Response): void => {
+  res.json({
+    resource: `${ISSUER}/mcp`,
+    authorization_servers: [ISSUER],
+    scopes_supported: ['mcp:read', 'mcp:write', 'mcp:admin'],
+    bearer_methods_supported: ['header'],
+    resource_documentation: `${ISSUER}/docs`,
+  });
+});
+
+// ============================================================
 // RFC 8414: Discovery Endpoint (PUBLIC - no auth)
 // ============================================================
 router.get('/.well-known/oauth-authorization-server', (_req: Request, res: Response): void => {
@@ -87,6 +101,7 @@ router.get('/.well-known/oauth-authorization-server', (_req: Request, res: Respo
     issuer: ISSUER,
     authorization_endpoint: `${ISSUER}/oauth/authorize`,
     token_endpoint: `${ISSUER}/oauth/token`,
+    registration_endpoint: `${ISSUER}/oauth/register`,
     revocation_endpoint: `${ISSUER}/oauth/revoke`,
     userinfo_endpoint: `${ISSUER}/oauth/userinfo`,
     response_types_supported: ['code'],
@@ -104,6 +119,7 @@ router.get('/.well-known/openid-configuration', (_req: Request, res: Response): 
     issuer: ISSUER,
     authorization_endpoint: `${ISSUER}/oauth/authorize`,
     token_endpoint: `${ISSUER}/oauth/token`,
+    registration_endpoint: `${ISSUER}/oauth/register`,
     revocation_endpoint: `${ISSUER}/oauth/revoke`,
     userinfo_endpoint: `${ISSUER}/oauth/userinfo`,
     response_types_supported: ['code'],
@@ -112,6 +128,70 @@ router.get('/.well-known/openid-configuration', (_req: Request, res: Response): 
     scopes_supported: ['mcp:read', 'mcp:write', 'mcp:admin'],
     code_challenge_methods_supported: ['S256', 'plain'],
   });
+});
+
+// ============================================================
+// RFC 7591: Dynamic Client Registration (PUBLIC - used by Claude & ChatGPT)
+// Allows AI clients to register themselves programmatically without manual client ID creation!
+// ============================================================
+router.post('/oauth/register', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { client_name, redirect_uris, grant_types, response_types, scope } = req.body as {
+      client_name?: string;
+      redirect_uris?: string[];
+      grant_types?: string[];
+      response_types?: string[];
+      scope?: string;
+    };
+
+    if (!redirect_uris || !Array.isArray(redirect_uris) || redirect_uris.length === 0) {
+      res.status(400).json({
+        error: 'invalid_client_metadata',
+        error_description: 'redirect_uris array is required',
+      });
+      return;
+    }
+
+    // Associate dynamically registered clients with the admin user
+    const adminUser = await prisma.user.findFirst({ where: { role: 'admin' } });
+    if (!adminUser) {
+      res.status(500).json({ error: 'server_error', error_description: 'No admin user configured' });
+      return;
+    }
+
+    const clientId = `mcp_client_${generateSecureToken(8)}`;
+    const clientSecret = `mcp_secret_${generateSecureToken(24)}`;
+    const clientSecretHash = hashToken(clientSecret);
+    const name = client_name || 'Dynamic MCP Client (Claude / ChatGPT)';
+    const requestedScopes = scope ? scope.split(' ') : ['mcp:read', 'mcp:write'];
+
+    const client = await prisma.oAuthClient.create({
+      data: {
+        clientId,
+        clientSecretHash,
+        name,
+        redirectUris: redirect_uris,
+        scopes: requestedScopes,
+        trusted: false,
+        userId: adminUser.id,
+      },
+    });
+
+    res.status(201).json({
+      client_id: client.clientId,
+      client_secret: clientSecret,
+      client_name: client.name,
+      redirect_uris: client.redirectUris,
+      grant_types: grant_types || ['authorization_code', 'refresh_token'],
+      response_types: response_types || ['code'],
+      scope: client.scopes.join(' '),
+      client_id_issued_at: Math.floor(Date.now() / 1000),
+      client_secret_expires_at: 0,
+    });
+  } catch (err) {
+    console.error('Error in Dynamic Client Registration:', err);
+    res.status(500).json({ error: 'server_error', error_description: 'Failed to dynamically register client' });
+  }
 });
 
 // ============================================================

@@ -127,6 +127,11 @@ export async function authenticateMcpClient(req: Request, res: Response, next: N
       success: false,
       errorMsg: 'Missing authentication credentials',
     });
+    const ISSUER = process.env.OAUTH_ISSUER || 'https://vynn.urbackend.in';
+    res.setHeader(
+      'WWW-Authenticate',
+      `Bearer error="unauthorized", resource_metadata="${ISSUER}/.well-known/oauth-protected-resource"`
+    );
     res.status(401).json({ error: 'Missing API key or Bearer token' });
     return;
   }
