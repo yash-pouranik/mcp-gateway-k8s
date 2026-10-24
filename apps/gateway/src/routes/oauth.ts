@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../db.js';
 import { requireUserAuth } from '../middleware/auth.js';
 import {
@@ -330,61 +331,86 @@ function escapeHtml(str: string): string {
 // ============================================================
 // POST /oauth/authorize — Process consent form submission
 // ============================================================
-router.post('/oauth/authorize', urlencodedParser, async (req: Request, res: Response): Promise<void> => {
-  const {
-    client_id,
-    redirect_uri,
-    scope,
-    state,
-    code_challenge,
-    code_challenge_method,
-    action,
-    email,
-    password,
-  } = req.body as Record<string, string>;
+router.post('/oauth/authorize', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      client_id,
+      redirect_uri,
+      scope,
+      state,
+      code_challenge,
+      code_challenge_method,
+      action,
+      email,
+      password,
+    } = req.body as Record<string, string>;
 
-  if (action === 'deny') {
+    if (action === 'deny') {
+      const redirectUrl = new URL(redirect_uri);
+      redirectUrl.searchParams.set('error', 'access_denied');
+      if (state) redirectUrl.searchParams.set('state', state);
+      res.redirect(redirectUrl.toString());
+      return;
+    }
+
+    if (!client_id || !redirect_uri) {
+      res.status(400).json({ error: 'invalid_request', error_description: 'client_id and redirect_uri are required' });
+      return;
+    }
+
+    // Validate client
+    const client = await prisma.oAuthClient.findUnique({ where: { clientId: client_id } });
+    if (!client || !isAllowedRedirectUri(client.redirectUris, redirect_uri)) {
+      res.status(400).json({ error: 'invalid_client', error_description: 'Client or redirect_uri not valid' });
+      return;
+    }
+
+    // Authenticate user credentials
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      res.status(401).send(`
+        <div style="font-family: sans-serif; background: #0f172a; color: #f87171; padding: 40px; text-align: center; min-height: 100vh;">
+          <h2>Invalid Credentials</h2>
+          <p style="color: #94a3b8; margin: 16px 0;">No account found for "${escapeHtml(email || '')}". Please check your email.</p>
+          <a href="javascript:history.back()" style="color: #6366f1; text-decoration: underline;">&larr; Try Again</a>
+        </div>
+      `);
+      return;
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      res.status(401).send(`
+        <div style="font-family: sans-serif; background: #0f172a; color: #f87171; padding: 40px; text-align: center; min-height: 100vh;">
+          <h2>Invalid Password</h2>
+          <p style="color: #94a3b8; margin: 16px 0;">Incorrect password. Please try again.</p>
+          <a href="javascript:history.back()" style="color: #6366f1; text-decoration: underline;">&larr; Try Again</a>
+        </div>
+      `);
+      return;
+    }
+
+    // Generate authorization code
+    const code = await generateAuthCode({
+      clientId: client_id,
+      userId: user.id,
+      redirectUri: redirect_uri,
+      scope: scope || 'mcp:read',
+      codeChallenge: code_challenge || undefined,
+      codeChallengeMethod: code_challenge_method || undefined,
+    });
+
     const redirectUrl = new URL(redirect_uri);
-    redirectUrl.searchParams.set('error', 'access_denied');
+    redirectUrl.searchParams.set('code', code);
     if (state) redirectUrl.searchParams.set('state', state);
     res.redirect(redirectUrl.toString());
-    return;
+  } catch (err) {
+    console.error('Error processing OAuth authorization:', err);
+    res.status(500).json({
+      error: 'server_error',
+      error_description: err instanceof Error ? err.message : 'Internal authorization error',
+    });
   }
-
-  // Validate client
-  const client = await prisma.oAuthClient.findUnique({ where: { clientId: client_id } });
-  if (!client || !isAllowedRedirectUri(client.redirectUris, redirect_uri)) {
-    res.status(400).json({ error: 'invalid_client', error_description: 'Client or redirect_uri not valid' });
-    return;
-  }
-
-  // Authenticate user credentials
-  const bcrypt = await import('bcryptjs');
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
-    res.status(401).send('Invalid credentials. <a href="javascript:history.back()">Go back</a>');
-    return;
-  }
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) {
-    res.status(401).send('Invalid credentials. <a href="javascript:history.back()">Go back</a>');
-    return;
-  }
-
-  // Generate authorization code
-  const code = await generateAuthCode({
-    clientId: client_id,
-    userId: user.id,
-    redirectUri: redirect_uri,
-    scope: scope || 'mcp:read',
-    codeChallenge: code_challenge || undefined,
-    codeChallengeMethod: code_challenge_method || undefined,
-  });
-
-  const redirectUrl = new URL(redirect_uri);
-  redirectUrl.searchParams.set('code', code);
-  if (state) redirectUrl.searchParams.set('state', state);
-  res.redirect(redirectUrl.toString());
 });
 
 // ============================================================
