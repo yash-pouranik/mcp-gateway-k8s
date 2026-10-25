@@ -955,11 +955,19 @@ router.get('/oauth/userinfo', requireUserAuth, async (req: Request, res: Respons
 // Dashboard: OAuth Client Management (AUTHENTICATED)
 // ============================================================
 
-// GET /api/oauth/clients — List OAuth apps for current user
+// GET /api/oauth/clients — List OAuth apps (Team for Admin, Personal for Members)
 router.get('/api/oauth/clients', requireUserAuth, async (req: Request, res: Response): Promise<void> => {
-  const userId = req.user!.id;
+  const showAll = req.user!.role === 'admin' && req.query.all === 'true';
+  const where: any = {};
+
+  if (!showAll) {
+    where.userId = req.user!.id;
+  } else if (req.query.userId && typeof req.query.userId === 'string') {
+    where.userId = req.query.userId;
+  }
+
   const clients = await prisma.oAuthClient.findMany({
-    where: { userId },
+    where,
     select: {
       id: true,
       clientId: true,
@@ -967,7 +975,16 @@ router.get('/api/oauth/clients', requireUserAuth, async (req: Request, res: Resp
       redirectUris: true,
       scopes: true,
       trusted: true,
+      userId: true,
       createdAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -1016,17 +1033,30 @@ router.post('/api/oauth/clients', requireUserAuth, async (req: Request, res: Res
 
 // DELETE /api/oauth/clients/:id — Delete OAuth app and revoke all tokens
 router.delete('/api/oauth/clients/:id', requireUserAuth, async (req: Request, res: Response): Promise<void> => {
-  const id = req.params.id as string;
-  const userId = req.user!.id;
-  const client = await prisma.oAuthClient.findUnique({ where: { id } });
-  if (!client || client.userId !== userId) {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const client = await prisma.oAuthClient.findUnique({
+    where: { id },
+    include: {
+      user: {
+        select: { id: true, name: true, email: true, role: true },
+      },
+    },
+  });
+
+  if (!client) {
     res.status(404).json({ error: 'OAuth client not found' });
+    return;
+  }
+
+  // Members can only delete their own apps; Admins can delete/revoke any app across the team
+  if (req.user!.role !== 'admin' && client.userId !== req.user!.id) {
+    res.status(403).json({ error: 'Forbidden — you can only delete your own OAuth applications' });
     return;
   }
 
   // Cascade delete (Prisma handles refresh tokens and auth codes via onDelete: Cascade)
   await prisma.oAuthClient.delete({ where: { id } });
-  res.json({ success: true });
+  res.json({ success: true, message: 'OAuth application deleted successfully' });
 });
 
 export default router;

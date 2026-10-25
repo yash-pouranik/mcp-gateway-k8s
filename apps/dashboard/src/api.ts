@@ -126,6 +126,13 @@ export interface OAuthClient {
   redirectUris: string[];
   scopes: string[];
   trusted: boolean;
+  userId?: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
   createdAt: string;
 }
 
@@ -475,8 +482,9 @@ export const api = {
     return res.json();
   },
 
-  async getOAuthClients(): Promise<OAuthClient[]> {
-    const res = await fetch('/api/oauth/clients', { headers: getAuthHeaders() });
+  async getOAuthClients(all?: boolean): Promise<OAuthClient[]> {
+    const url = all ? '/api/oauth/clients?all=true' : '/api/oauth/clients';
+    const res = await fetch(url, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to load OAuth clients');
     return res.json();
   },

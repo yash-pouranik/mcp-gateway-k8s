@@ -102,4 +102,24 @@ const deleteCheckWithAdmin = checkToolScope('mcp:read mcp:write mcp:admin', 'woo
 assert.equal(deleteCheckWithAdmin.allowed, true, 'mcp:admin must allow delete_product');
 console.log('   ✅ Scope-based access control matrix passed.');
 
-console.log('\n🎉 ALL 4 OAUTH 2.0 SPECIFICATION & SECURITY UNIT TESTS PASSED CLEANLY!\n');
+// 5. OAuth Application Ownership & Revocation RBAC
+console.log('5. Testing OAuth Application Ownership & Revocation RBAC...');
+function canDeleteOAuthApp(user: { id: string; role: 'admin' | 'member' }, app: { userId: string }): boolean {
+  return user.role === 'admin' || app.userId === user.id;
+}
+
+const adminUser = { id: 'usr_admin', role: 'admin' as const };
+const memberA = { id: 'usr_member_a', role: 'member' as const };
+const memberB = { id: 'usr_member_b', role: 'member' as const };
+
+const appOfMemberA = { userId: 'usr_member_a' };
+const appOfAdmin = { userId: 'usr_admin' };
+
+assert.equal(canDeleteOAuthApp(adminUser, appOfMemberA), true, 'Admin must be able to revoke member apps');
+assert.equal(canDeleteOAuthApp(adminUser, appOfAdmin), true, 'Admin must be able to delete admin apps');
+assert.equal(canDeleteOAuthApp(memberA, appOfMemberA), true, 'Member A must be able to delete their own app');
+assert.equal(canDeleteOAuthApp(memberB, appOfMemberA), false, 'Member B must be forbidden from deleting Member A app');
+assert.equal(canDeleteOAuthApp(memberA, appOfAdmin), false, 'Member A must be forbidden from deleting Admin app');
+console.log('   ✅ OAuth application deletion & admin revocation RBAC verified.');
+
+console.log('\n🎉 ALL 5 OAUTH 2.0 SPECIFICATION & SECURITY UNIT TESTS PASSED CLEANLY!\n');

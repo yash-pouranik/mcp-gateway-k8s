@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api, OAuthClient } from '../api';
-import { Plus, Trash2, Copy, Check, ChevronDown, ChevronUp, Shield } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Copy,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Shield,
+  RefreshCw,
+  AlertTriangle,
+  UserCheck,
+} from 'lucide-react';
 import { OAuthClientsSkeleton } from './Skeleton';
 
 interface OAuthClientsViewProps {
@@ -14,6 +25,8 @@ const AVAILABLE_SCOPES = [
 ];
 
 export const OAuthClientsView: React.FC<OAuthClientsViewProps> = ({ user }) => {
+  const isAdmin = user?.role === 'admin';
+  const [scope, setScope] = useState<'my' | 'team'>(isAdmin ? 'team' : 'my');
   const [clients, setClients] = useState<OAuthClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +34,10 @@ export const OAuthClientsView: React.FC<OAuthClientsViewProps> = ({ user }) => {
   const [newClientSecret, setNewClientSecret] = useState<{ clientId: string; secret: string } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Revoke / Delete Confirmation Modal
+  const [deletingClient, setDeletingClient] = useState<OAuthClient | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // New client form state
   const [form, setForm] = useState({
@@ -31,22 +48,22 @@ export const OAuthClientsView: React.FC<OAuthClientsViewProps> = ({ user }) => {
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const loadClients = useCallback(async () => {
+  const loadClients = useCallback(async (selectedScope: 'my' | 'team') => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getOAuthClients();
+      const data = await api.getOAuthClients(isAdmin && selectedScope === 'team');
       setClients(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load OAuth clients');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
-    loadClients();
-  }, [loadClients]);
+    loadClients(scope);
+  }, [loadClients, scope]);
 
   const handleCopy = async (text: string, id: string) => {
     try {
@@ -87,7 +104,7 @@ export const OAuthClientsView: React.FC<OAuthClientsViewProps> = ({ user }) => {
       setNewClientSecret({ clientId: result.clientId, secret: result.clientSecret });
       setShowNewModal(false);
       setForm({ name: '', redirectUris: '', scopes: ['mcp:read', 'mcp:write'] });
-      await loadClients();
+      await loadClients(scope);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to create OAuth client');
     } finally {
@@ -95,45 +112,82 @@ export const OAuthClientsView: React.FC<OAuthClientsViewProps> = ({ user }) => {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete OAuth app "${name}"? All tokens will be revoked.`)) return;
+  const handleConfirmDelete = async () => {
+    if (!deletingClient) return;
+    setDeleting(true);
     try {
-      await api.deleteOAuthClient(id);
-      setClients((prev) => prev.filter((c) => c.id !== id));
+      await api.deleteOAuthClient(deletingClient.id);
+      setClients((prev) => prev.filter((c) => c.id !== deletingClient.id));
+      setDeletingClient(null);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete OAuth client');
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const toggleScope = (scope: string) => {
+  const toggleScope = (scopeName: string) => {
     setForm((prev) => ({
       ...prev,
-      scopes: prev.scopes.includes(scope)
-        ? prev.scopes.filter((s) => s !== scope)
-        : [...prev.scopes, scope],
+      scopes: prev.scopes.includes(scopeName)
+        ? prev.scopes.filter((s) => s !== scopeName)
+        : [...prev.scopes, scopeName],
     }));
   };
 
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-850">
         <div>
           <h2 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
             <Shield className="w-4 h-4 text-indigo-400" />
-            OAuth Applications
+            <span>OAuth Applications</span>
           </h2>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Register external apps to access VYNN MCP Gateway via OAuth 2.0
+            Register and govern external apps connecting via RFC 6749 OAuth 2.0 & RFC 9728 discovery.
           </p>
         </div>
-        <button
-          onClick={() => setShowNewModal(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-xs font-medium transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          New App
-        </button>
+
+        <div className="flex items-center space-x-2">
+          {/* Admin Scope Toggle */}
+          {isAdmin && (
+            <div className="flex items-center bg-zinc-900 p-0.5 rounded-md border border-zinc-800 text-xs">
+              <button
+                onClick={() => setScope('team')}
+                className={`px-2.5 py-1 rounded transition-colors ${
+                  scope === 'team' ? 'bg-zinc-800 text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Team Apps
+              </button>
+              <button
+                onClick={() => setScope('my')}
+                className={`px-2.5 py-1 rounded transition-colors ${
+                  scope === 'my' ? 'bg-zinc-800 text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Personal
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={() => loadClients(scope)}
+            className="p-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-cf-orange' : ''}`} />
+          </button>
+
+          <button
+            onClick={() => setShowNewModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-xs font-medium transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New App</span>
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -209,121 +263,170 @@ export const OAuthClientsView: React.FC<OAuthClientsViewProps> = ({ user }) => {
         <div className="text-center py-16 text-zinc-500">
           <Shield className="w-8 h-8 mx-auto mb-3 opacity-30" />
           <p className="text-sm font-medium text-zinc-400">No OAuth apps yet</p>
-          <p className="text-xs mt-1">Register an app to enable external integrations</p>
+          <p className="text-xs mt-1">Register an app to enable external integrations (Claude Web, ChatGPT Actions)</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {clients.map((client) => (
-            <div
-              key={client.id}
-              className="bg-zinc-900/60 border border-zinc-800/60 rounded-lg overflow-hidden"
-            >
-              {/* Card header */}
-              <div
-                className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-zinc-800/30 transition-colors"
-                onClick={() => setExpandedId(expandedId === client.id ? null : client.id)}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-md bg-indigo-900/50 border border-indigo-700/30 flex items-center justify-center shrink-0">
-                    <Shield className="w-4 h-4 text-indigo-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-zinc-100 truncate">{client.name}</p>
-                    <p className="text-[10px] font-mono text-zinc-500 truncate">{client.clientId}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0 ml-4">
-                  <div className="hidden sm:flex gap-1">
-                    {client.scopes.map((s) => (
-                      <span
-                        key={s}
-                        className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700"
-                      >
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(client.id, client.name);
-                    }}
-                    className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-900/20 rounded-md transition-colors"
-                    title="Delete app"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                  {expandedId === client.id ? (
-                    <ChevronUp className="w-3.5 h-3.5 text-zinc-500" />
-                  ) : (
-                    <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
-                  )}
-                </div>
-              </div>
+          {clients.map((client) => {
+            const isOwner = client.userId === user?.id;
+            const canDelete = isAdmin || isOwner;
 
-              {/* Expanded details */}
-              {expandedId === client.id && (
-                <div className="border-t border-zinc-800/60 px-4 py-3 space-y-3 bg-zinc-950/30">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Client ID</p>
-                      <div className="flex items-center gap-2 bg-zinc-900 rounded-md px-2.5 py-1.5">
-                        <code className="text-xs text-indigo-300 font-mono flex-1 break-all">
-                          {client.clientId}
-                        </code>
-                        <button
-                          onClick={() => handleCopy(client.clientId, `id-${client.id}`)}
-                          className="text-zinc-400 hover:text-zinc-200 shrink-0"
-                        >
-                          {copiedId === `id-${client.id}` ? (
-                            <Check className="w-3 h-3 text-green-400" />
-                          ) : (
-                            <Copy className="w-3 h-3" />
-                          )}
-                        </button>
+            return (
+              <div
+                key={client.id}
+                className="bg-zinc-900/60 border border-zinc-850 hover:border-zinc-800 rounded-lg overflow-hidden transition-colors"
+              >
+                {/* Card header */}
+                <div
+                  className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-zinc-800/30 transition-colors"
+                  onClick={() => setExpandedId(expandedId === client.id ? null : client.id)}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-md bg-indigo-900/50 border border-indigo-700/30 flex items-center justify-center shrink-0">
+                      <Shield className="w-4 h-4 text-indigo-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-zinc-100 truncate">{client.name}</p>
+                        {isOwner && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-850 text-zinc-300 border border-zinc-750">
+                            You
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Client ID and Owner Attribution Badge */}
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                        <p className="text-[10px] font-mono text-zinc-500 truncate">{client.clientId}</p>
+                        {client.user && (
+                          <span className="inline-flex items-center space-x-1 text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-950 border border-zinc-800 text-zinc-400">
+                            <UserCheck className="w-3 h-3 text-zinc-500 shrink-0" />
+                            <span>Owner:</span>
+                            <span className="text-zinc-200 font-medium">{client.user.name}</span>
+                            <span className="text-zinc-500 text-[9px]">({client.user.email})</span>
+                            <span
+                              className={`text-[8px] uppercase px-1 py-0.2 rounded font-sans font-semibold ${
+                                client.user.role === 'admin'
+                                  ? 'bg-cf-orange/15 text-cf-orange border border-cf-orange/30'
+                                  : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                              }`}
+                            >
+                              {client.user.role}
+                            </span>
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Created</p>
-                      <p className="text-xs text-zinc-300">
-                        {new Date(client.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">
-                      Redirect URIs
-                    </p>
-                    <div className="space-y-1">
-                      {client.redirectUris.map((uri) => (
-                        <code key={uri} className="block text-xs text-zinc-300 font-mono bg-zinc-900 px-2.5 py-1 rounded">
-                          {uri}
-                        </code>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Scopes</p>
-                    <div className="flex flex-wrap gap-1.5">
+
+                  <div className="flex items-center gap-2 shrink-0 ml-4">
+                    <div className="hidden sm:flex gap-1">
                       {client.scopes.map((s) => (
                         <span
                           key={s}
-                          className="text-xs font-mono px-2 py-0.5 rounded-full bg-indigo-900/40 text-indigo-300 border border-indigo-700/30"
+                          className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700"
                         >
                           {s}
                         </span>
                       ))}
                     </div>
-                  </div>
-                  <div className="pt-1 border-t border-zinc-800/50">
-                    <p className="text-[10px] text-zinc-600 font-mono">
-                      Discovery: /.well-known/oauth-authorization-server
-                    </p>
+
+                    {canDelete ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingClient(client);
+                        }}
+                        className={`p-1.5 rounded-md transition-colors ${
+                          isAdmin && !isOwner
+                            ? 'text-amber-500/80 hover:text-rose-400 hover:bg-rose-950/30'
+                            : 'text-zinc-500 hover:text-rose-400 hover:bg-rose-950/20'
+                        }`}
+                        title={isAdmin && !isOwner ? `Revoke ${client.user?.name || "member"}'s app (Admin)` : 'Delete app'}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <span
+                        className="text-[10px] text-zinc-600 italic px-1 select-none"
+                        title={`Owned by ${client.user?.name || "member"}. Only owner or admin can revoke.`}
+                      >
+                        View only
+                      </span>
+                    )}
+
+                    {expandedId === client.id ? (
+                      <ChevronUp className="w-3.5 h-3.5 text-zinc-500" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {/* Expanded details */}
+                {expandedId === client.id && (
+                  <div className="border-t border-zinc-800/60 px-4 py-3 space-y-3 bg-zinc-950/30">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Client ID</p>
+                        <div className="flex items-center gap-2 bg-zinc-900 rounded-md px-2.5 py-1.5">
+                          <code className="text-xs text-indigo-300 font-mono flex-1 break-all">
+                            {client.clientId}
+                          </code>
+                          <button
+                            onClick={() => handleCopy(client.clientId, `id-${client.id}`)}
+                            className="text-zinc-400 hover:text-zinc-200 shrink-0"
+                          >
+                            {copiedId === `id-${client.id}` ? (
+                              <Check className="w-3 h-3 text-green-400" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Created</p>
+                        <p className="text-xs text-zinc-300">
+                          {new Date(client.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">
+                        Redirect URIs
+                      </p>
+                      <div className="space-y-1">
+                        {client.redirectUris.map((uri) => (
+                          <code key={uri} className="block text-xs text-zinc-300 font-mono bg-zinc-900 px-2.5 py-1 rounded">
+                            {uri}
+                          </code>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Scopes</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {client.scopes.map((s) => (
+                          <span
+                            key={s}
+                            className="text-xs font-mono px-2 py-0.5 rounded-full bg-indigo-900/40 text-indigo-300 border border-indigo-700/30"
+                          >
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="pt-1 border-t border-zinc-800/50">
+                      <p className="text-[10px] text-zinc-600 font-mono">
+                        Discovery: /.well-known/oauth-authorization-server
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -369,7 +472,7 @@ export const OAuthClientsView: React.FC<OAuthClientsViewProps> = ({ user }) => {
                 <textarea
                   value={form.redirectUris}
                   onChange={(e) => setForm((prev) => ({ ...prev, redirectUris: e.target.value }))}
-                  placeholder="https://myapp.com/callback&#10;http://localhost:3001/callback"
+                  placeholder="https://myapp.com/callback&#10;https://chatgpt.com/aip/plugin-oauth/callback"
                   rows={3}
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 font-mono resize-none"
                 />
@@ -418,8 +521,64 @@ export const OAuthClientsView: React.FC<OAuthClientsViewProps> = ({ user }) => {
         </div>
       )}
 
-      {/* Unused user prop suppressor */}
-      {!user && null}
+      {/* Revoke / Delete Confirmation Modal */}
+      {deletingClient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-lg max-w-sm w-full p-5 shadow-2xl space-y-3">
+            <div className="flex items-center space-x-2 text-rose-400">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <h3 className="text-sm font-semibold text-white">
+                {isAdmin && deletingClient.userId !== user.id
+                  ? "Revoke Member's OAuth Application"
+                  : 'Delete OAuth Application'}
+              </h3>
+            </div>
+
+            <p className="text-xs text-zinc-300 leading-relaxed">
+              Are you sure you want to delete and revoke{' '}
+              <span className="font-semibold text-white font-mono">{deletingClient.name}</span>?
+            </p>
+
+            <div className="p-2.5 rounded bg-zinc-900/60 border border-zinc-850 text-[11px] font-mono text-zinc-400 space-y-1">
+              <div>
+                Client ID: <span className="text-indigo-300">{deletingClient.clientId}</span>
+              </div>
+              {deletingClient.user && (
+                <div>
+                  Owner: <span className="text-zinc-200">{deletingClient.user.name}</span> ({deletingClient.user.email})
+                </div>
+              )}
+              <div className="text-rose-400 pt-1.5 border-t border-zinc-800 text-[10px] font-sans">
+                All active access & refresh tokens will be immediately revoked. External AI clients (ChatGPT, Claude, etc.) using this app will be disconnected.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-1">
+              <button
+                onClick={() => setDeletingClient(null)}
+                disabled={deleting}
+                className="px-3 py-1.5 rounded text-xs text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="px-3 py-1.5 rounded text-xs font-medium text-white bg-rose-600 hover:bg-rose-500 transition disabled:opacity-50 flex items-center space-x-1.5"
+              >
+                {deleting ? (
+                  <span>Revoking...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isAdmin && deletingClient.userId !== user.id ? 'Revoke App' : 'Delete App'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
