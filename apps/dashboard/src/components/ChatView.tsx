@@ -946,7 +946,7 @@ export const ChatView: React.FC = () => {
                       <Cpu className="w-3 h-3 text-cf-orange flex-shrink-0" />
                       <span className="truncate max-w-[120px] sm:max-w-[200px]">
                         {selectedProvider === 'auto'
-                          ? '⚡ Auto Router'
+                          ? 'Auto Router'
                           : providers.find((p) => p.name === selectedProvider)?.displayName || selectedProvider}
                       </span>
                       <ChevronUp
@@ -978,7 +978,7 @@ export const ChatView: React.FC = () => {
                           >
                             <div>
                               <div className="flex items-center space-x-1.5 font-medium">
-                                <span>⚡ Auto Router</span>
+                                <span>Auto Router</span>
                                 <span className="px-1.5 py-0.2 rounded bg-cf-orange/20 text-[9px] font-mono text-cf-orange uppercase">
                                   Smart
                                 </span>

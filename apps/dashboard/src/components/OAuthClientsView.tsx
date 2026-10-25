@@ -155,7 +155,7 @@ export const OAuthClientsView: React.FC<OAuthClientsViewProps> = ({ user }) => {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold text-indigo-300 uppercase tracking-wide">
-                ⚠️ Client Secret — Save this now
+                Client Secret — Save this now
               </p>
               <p className="text-xs text-zinc-400 mt-0.5">
                 This secret will never be shown again.

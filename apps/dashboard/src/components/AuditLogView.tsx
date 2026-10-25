@@ -8,6 +8,8 @@ import {
   X,
   ChevronLeft,
   Check,
+  Key,
+  Sparkles,
 } from 'lucide-react';
 
 interface AuditLogViewProps {
@@ -290,7 +292,7 @@ const renderCallerBadge = (log: AuditLog) => {
   if (summary.apiKeyName || summary.keyName || summary.apiKeyPrefix || authType === 'api_key') {
     return (
       <span className="inline-flex items-center space-x-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-300 border border-amber-800/50">
-        <span>🔑</span>
+        <Key className="w-3 h-3 text-amber-400 shrink-0" />
         <span className="truncate max-w-[110px]">{summary.apiKeyName || summary.keyName || 'API Key'}</span>
       </span>
     );
@@ -300,7 +302,7 @@ const renderCallerBadge = (log: AuditLog) => {
   if (source === 'vynn_chat_agent' || authType === 'dashboard_chat' || source === 'dashboard_chat_agent') {
     return (
       <span className="inline-flex items-center space-x-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-orange-950/50 text-cf-orange border border-orange-800/60">
-        <span>🤖</span>
+        <Sparkles className="w-3 h-3 text-cf-orange shrink-0" />
         <span>VYNN Agent</span>
       </span>
     );

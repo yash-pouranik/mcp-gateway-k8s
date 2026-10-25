@@ -166,7 +166,7 @@ router.get(['/docs', '/api/docs'], (_req: Request, res: Response): void => {
 
     <!-- Section 1: Claude Web -->
     <div class="section">
-      <h2>🟣 Claude Web (claude.ai Custom Connectors) <span class="tag">1-Click OAuth 2.0</span></h2>
+      <h2>Claude Web (claude.ai Custom Connectors) <span class="tag">1-Click OAuth 2.0</span></h2>
       <p style="color: var(--text-muted); font-size: 13px;">
         Claude Web natively discovers tools and authenticates via RFC 9728 Protected Resource metadata. Zero configuration files needed!
       </p>
@@ -189,7 +189,7 @@ router.get(['/docs', '/api/docs'], (_req: Request, res: Response): void => {
 
     <!-- Section 2: ChatGPT -->
     <div class="section">
-      <h2>🤖 ChatGPT (Web Custom GPTs & Actions) <span class="tag">OAuth 2.0 + PKCE</span></h2>
+      <h2>ChatGPT (Web Custom GPTs & Actions) <span class="tag">OAuth 2.0 + PKCE</span></h2>
       <p style="color: var(--text-muted); font-size: 13px;">
         ChatGPT Custom GPTs connect via OAuth 2.0 authorization code flow with persistent refresh tokens (<code>offline_access</code>).
       </p>
@@ -249,7 +249,7 @@ router.get(['/docs', '/api/docs'], (_req: Request, res: Response): void => {
 
     <!-- Section 3: Claude Desktop & Claude Code -->
     <div class="section">
-      <h2>💻 Claude Desktop & Claude Code (CLI) <span class="tag">Streamable HTTP</span></h2>
+      <h2>Claude Desktop & Claude Code (CLI) <span class="tag">Streamable HTTP</span></h2>
       <h3>Method 1: Claude Code CLI (1-line setup)</h3>
       <pre>claude mcp add --transport http vynn-gateway ${ISSUER}/mcp --header "Authorization: Bearer mcp_live_YOUR_API_KEY"</pre>
 
@@ -281,7 +281,7 @@ router.get(['/docs', '/api/docs'], (_req: Request, res: Response): void => {
 
     <!-- Section 3: Cursor / Windsurf -->
     <div class="section">
-      <h2>⚡ Cursor & Windsurf IDE <span class="tag">Direct MCP</span></h2>
+      <h2>Cursor & Windsurf IDE <span class="tag">Direct MCP</span></h2>
       <p style="color: var(--text-muted); font-size: 13px;">
         Add to <code>.cursor/mcp.json</code> in your project or Cursor MCP Settings:
       </p>
@@ -299,7 +299,7 @@ router.get(['/docs', '/api/docs'], (_req: Request, res: Response): void => {
 
     <!-- Section 4: Python & Node.js SDK -->
     <div class="section">
-      <h2>🐍 Python & Node.js MCP SDK</h2>
+      <h2>Python & Node.js MCP SDK</h2>
       <h3>Node.js / TypeScript Example</h3>
       <pre>import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
@@ -331,12 +331,15 @@ async def main():
             result = await session.call_tool("woocommerce__list_products", {"per_page": 5})
             print(result)
 
+async def run():
+    await main()
+
 asyncio.run(main())</pre>
     </div>
 
     <!-- Section 5: cURL -->
     <div class="section">
-      <h2>💻 Terminal & cURL Test</h2>
+      <h2>Terminal & cURL Test</h2>
       <pre>curl -X POST ${ISSUER}/mcp \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer mcp_live_YOUR_API_KEY" \\
