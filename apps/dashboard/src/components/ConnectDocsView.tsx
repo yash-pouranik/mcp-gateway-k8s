@@ -8,7 +8,8 @@ import {
   Terminal,
   Code,
   Sparkles,
-  Layers
+  Layers,
+  UserCheck
 } from 'lucide-react';
 
 interface ConnectDocsViewProps {
@@ -17,7 +18,7 @@ interface ConnectDocsViewProps {
 }
 
 export const ConnectDocsView: React.FC<ConnectDocsViewProps> = ({ user: _user, onNavigateToTab }) => {
-  const [activeClient, setActiveClient] = useState<'chatgpt' | 'claude' | 'cursor' | 'sdk' | 'curl'>('chatgpt');
+  const [activeClient, setActiveClient] = useState<'claude-web' | 'chatgpt' | 'claude-desktop' | 'cursor' | 'sdk' | 'curl'>('claude-web');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const origin = window.location.origin;
@@ -32,7 +33,7 @@ export const ConnectDocsView: React.FC<ConnectDocsViewProps> = ({ user: _user, o
   const CopyButton = ({ text, id }: { text: string; id: string }) => (
     <button
       onClick={() => handleCopy(text, id)}
-      className="inline-flex items-center space-x-1 px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-mono transition"
+      className="inline-flex items-center space-x-1 px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-mono transition shrink-0"
       title="Copy to clipboard"
     >
       {copiedKey === id ? (
@@ -57,14 +58,15 @@ export const ConnectDocsView: React.FC<ConnectDocsViewProps> = ({ user: _user, o
           <div className="space-y-1.5">
             <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-medium">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Universal MCP Hub</span>
+              <span>Universal MCP Hub · OAuth 2.0 & RFC 9728 Ready</span>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
               Connect External AI to VYNN MCP Gateway
             </h1>
             <p className="text-sm text-zinc-400 max-w-2xl">
-              Connect ChatGPT, Claude, Cursor, LibreChat, or custom agents to WooCommerce & upstream tools using standard{' '}
-              <span className="text-zinc-200 font-medium">OAuth 2.0 (RFC 8414 + PKCE)</span> or{' '}
+              Connect Claude Web, ChatGPT, Claude Desktop, Cursor, or custom agents to WooCommerce & upstream tools using standard{' '}
+              <span className="text-zinc-200 font-medium">RFC 9728 Protected Resource Discovery</span>,{' '}
+              <span className="text-zinc-200 font-medium">OAuth 2.0 PKCE</span>, or{' '}
               <span className="text-zinc-200 font-medium">Bearer API Keys</span>.
             </p>
           </div>
@@ -77,14 +79,14 @@ export const ConnectDocsView: React.FC<ConnectDocsViewProps> = ({ user: _user, o
                   className="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-xs font-medium flex items-center space-x-1.5 transition"
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Create OAuth App</span>
+                  <span>OAuth Apps</span>
                 </button>
                 <button
                   onClick={() => onNavigateToTab('keys')}
                   className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-xs font-medium flex items-center space-x-1.5 transition"
                 >
                   <Key className="w-3.5 h-3.5" />
-                  <span>Get API Key</span>
+                  <span>API Keys</span>
                 </button>
               </>
             )}
@@ -92,14 +94,35 @@ export const ConnectDocsView: React.FC<ConnectDocsViewProps> = ({ user: _user, o
         </div>
       </div>
 
+      {/* Role-Based Security Notice */}
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-start space-x-3">
+          <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 shrink-0 mt-0.5 sm:mt-0">
+            <UserCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-semibold text-zinc-200 flex items-center space-x-2">
+              <span>Role-Based Access Control (RBAC) Governed</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">Strict</span>
+            </div>
+            <p className="text-zinc-400 mt-0.5 leading-relaxed">
+              Whichever AI client you connect, actual permissions are strictly determined by your user account role:
+              <strong className="text-zinc-200 font-medium"> Admin</strong> accounts receive full operational access (Read + Write + Delete).
+              <strong className="text-zinc-200 font-medium"> Member</strong> accounts are automatically capped to read-only tools regardless of requested scopes.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Client Platform Selector Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar border-b border-zinc-800">
         {[
-          { id: 'chatgpt', label: 'ChatGPT Web / Actions', icon: Globe },
-          { id: 'claude', label: 'Claude Desktop', icon: Terminal },
+          { id: 'claude-web', label: 'Claude Web (Connectors)', icon: Sparkles, badge: 'Recommended' },
+          { id: 'chatgpt', label: 'ChatGPT (Web / Actions)', icon: Globe },
+          { id: 'claude-desktop', label: 'Claude Desktop & Code CLI', icon: Terminal },
           { id: 'cursor', label: 'Cursor / Windsurf IDE', icon: Code },
           { id: 'sdk', label: 'Python & Node.js SDK', icon: Layers },
-          { id: 'curl', label: 'cURL & Direct HTTP', icon: Terminal },
+          { id: 'curl', label: 'cURL & Direct API', icon: Key },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeClient === tab.id;
@@ -107,33 +130,111 @@ export const ConnectDocsView: React.FC<ConnectDocsViewProps> = ({ user: _user, o
             <button
               key={tab.id}
               onClick={() => setActiveClient(tab.id as any)}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-t-lg text-xs font-medium border-b-2 whitespace-nowrap transition-colors ${
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition ${
                 isActive
-                  ? 'border-orange-500 bg-zinc-900 text-white'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
+                  ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 border border-transparent'
               }`}
             >
               <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-orange-400' : 'text-zinc-500'}`} />
               <span>{tab.label}</span>
+              {tab.badge && (
+                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-orange-500/20 text-orange-400 font-mono">
+                  {tab.badge}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
 
-      {/* Tab 1: ChatGPT */}
+      {/* Tab 1: Claude Web (Custom Connectors) */}
+      {activeClient === 'claude-web' && (
+        <div className="space-y-6">
+          <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                  <span>Connecting to Claude Web (claude.ai)</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    1-Click OAuth 2.0
+                  </span>
+                </h3>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Claude Web natively auto-discovers capabilities and authorizes via RFC 9728 Protected Resource metadata. Zero manual tokens needed!
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="bg-zinc-950 border border-zinc-850 rounded-lg p-4 space-y-2">
+                <div className="text-xs font-semibold text-zinc-200 flex items-center space-x-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-[10px] font-mono">1</span>
+                  <span>Open Claude Connectors</span>
+                </div>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Log in to <strong className="text-zinc-200">claude.ai</strong>, open <strong className="text-zinc-200">Settings &rarr; Connectors</strong> (or click the plug icon in any chat), and choose <strong className="text-zinc-200">Add custom connector</strong>.
+                </p>
+              </div>
+
+              <div className="bg-zinc-950 border border-zinc-850 rounded-lg p-4 space-y-2">
+                <div className="text-xs font-semibold text-zinc-200 flex items-center space-x-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-[10px] font-mono">2</span>
+                  <span>Enter MCP Server URL</span>
+                </div>
+                <p className="text-xs text-zinc-400">
+                  Set Connector Name as <strong className="text-zinc-200">VYNN Gateway</strong> and paste the endpoint:
+                </p>
+                <div className="flex items-center justify-between bg-zinc-900 border border-zinc-800 px-2.5 py-1.5 rounded font-mono text-[11px] text-purple-300">
+                  <span className="truncate">{gatewayUrl}/mcp</span>
+                  <CopyButton text={`${gatewayUrl}/mcp`} id="claude-url" />
+                </div>
+              </div>
+
+              <div className="bg-zinc-950 border border-zinc-850 rounded-lg p-4 space-y-2">
+                <div className="text-xs font-semibold text-zinc-200 flex items-center space-x-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-[10px] font-mono">3</span>
+                  <span>Authorize in Browser</span>
+                </div>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Claude opens our custom authorization screen. Sign in with your Gateway email & password and click <strong className="text-zinc-200">Allow Access</strong>. All tools connect instantly!
+                </p>
+              </div>
+            </div>
+
+            {/* Live Verification Box */}
+            <div className="bg-purple-950/20 border border-purple-900/40 rounded-lg p-4 space-y-2">
+              <div className="text-xs font-semibold text-purple-300 flex items-center space-x-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                <span>Example Prompts to Try in Claude:</span>
+              </div>
+              <div className="space-y-1.5 text-xs text-zinc-300 font-mono">
+                <div className="p-2 bg-black/60 rounded border border-purple-950/60">
+                  &quot;Show me the latest 5 orders in WooCommerce and their payment status.&quot;
+                </div>
+                <div className="p-2 bg-black/60 rounded border border-purple-950/60">
+                  &quot;Create a new product named 'Wireless Headphones Pro' priced at $129.99.&quot;
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 2: ChatGPT */}
       {activeClient === 'chatgpt' && (
         <div className="space-y-6">
           <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 sm:p-6 space-y-4">
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-base font-semibold text-white flex items-center gap-2">
-                  <span>Connecting to ChatGPT (Custom GPT / Actions)</span>
+                  <span>Connecting to ChatGPT (Custom GPT & Actions)</span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    OAuth 2.0 Ready
+                    OAuth 2.0 + Persistent Refresh
                   </span>
                 </h3>
                 <p className="text-xs text-zinc-400 mt-1">
-                  ChatGPT Custom GPTs natively support standard OAuth 2.0 authorization code flow.
+                  ChatGPT Custom GPTs connect via OAuth 2.0 code exchange with <code className="text-emerald-400 font-mono">offline_access</code> support for persistent connection.
                 </p>
               </div>
             </div>
@@ -145,12 +246,12 @@ export const ConnectDocsView: React.FC<ConnectDocsViewProps> = ({ user: _user, o
                   <span>Register ChatGPT App in Dashboard</span>
                 </div>
                 <p className="text-xs text-zinc-400">
-                  Go to <strong className="text-zinc-200">OAuth Apps</strong> tab and click <strong className="text-zinc-200">New Application</strong>.
+                  Go to <strong className="text-zinc-200">Access &rarr; OAuth Apps</strong> tab and click <strong className="text-zinc-200">New Application</strong>.
                 </p>
                 <div className="space-y-1.5 text-xs">
-                  <div className="text-zinc-400">ChatGPT Redirect URI:</div>
+                  <div className="text-zinc-400">ChatGPT Callback URL:</div>
                   <div className="flex items-center justify-between bg-zinc-900 border border-zinc-800 px-2.5 py-1.5 rounded font-mono text-[11px] text-zinc-300">
-                    <span className="truncate">https://chatgpt.com/aip/g-.../oauth/callback</span>
+                    <span className="truncate">https://chatgpt.com/aip/plugin-oauth/callback</span>
                     <CopyButton text="https://chatgpt.com/aip/plugin-oauth/callback" id="gpt-redirect" />
                   </div>
                 </div>
@@ -181,7 +282,7 @@ export const ConnectDocsView: React.FC<ConnectDocsViewProps> = ({ user: _user, o
                   <div className="text-[11px] text-orange-300/90 break-all">{gatewayUrl}/oauth/token</div>
                   <div className="flex items-center justify-between text-zinc-400 pt-1">
                     <span>Scope:</span>
-                    <span className="text-zinc-200">mcp:read mcp:write</span>
+                    <span className="text-zinc-200">mcp:read mcp:write offline_access</span>
                   </div>
                 </div>
               </div>
@@ -203,7 +304,7 @@ export const ConnectDocsView: React.FC<ConnectDocsViewProps> = ({ user: _user, o
                       '/mcp': {
                         post: {
                           operationId: 'callMcp',
-                          summary: 'Execute MCP JSON-RPC protocol methods or tools',
+                          summary: 'Execute MCP JSON-RPC protocol tools',
                           requestBody: {
                             required: true,
                             content: {
@@ -263,26 +364,43 @@ paths:
         </div>
       )}
 
-      {/* Tab 2: Claude Desktop */}
-      {activeClient === 'claude' && (
+      {/* Tab 3: Claude Desktop & Code CLI */}
+      {activeClient === 'claude-desktop' && (
         <div className="space-y-6">
           <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 sm:p-6 space-y-4">
             <div>
               <h3 className="text-base font-semibold text-white flex items-center gap-2">
-                <span>Connecting to Claude Desktop</span>
+                <span>Connecting to Claude Desktop & Claude Code (CLI)</span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">
                   Streamable HTTP
                 </span>
               </h3>
               <p className="text-xs text-zinc-400 mt-1">
-                Claude Desktop connects directly using standard MCP over Streamable HTTP or through the official remote MCP bridge.
+                Connect terminal CLI or desktop environments directly over Streamable HTTP with an API Key.
               </p>
             </div>
 
+            {/* Method A: Claude Code CLI */}
+            <div className="bg-zinc-950 border border-zinc-850 rounded-lg p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold text-zinc-200">
+                  Method 1: Claude Code CLI (1-line command)
+                </div>
+                <CopyButton
+                  text={`claude mcp add --transport http vynn-gateway ${gatewayUrl}/mcp --header "Authorization: Bearer mcp_live_YOUR_API_KEY"`}
+                  id="claude-code-cmd"
+                />
+              </div>
+              <div className="bg-black border border-zinc-850 rounded-lg p-2.5 font-mono text-[11px] text-zinc-300 overflow-x-auto">
+                <pre>{`claude mcp add --transport http vynn-gateway ${gatewayUrl}/mcp --header "Authorization: Bearer mcp_live_YOUR_API_KEY"`}</pre>
+              </div>
+            </div>
+
+            {/* Method B: Claude Desktop Config */}
             <div className="bg-zinc-950 border border-zinc-850 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-semibold text-zinc-200">
-                  Configuration File: <code className="text-orange-400 font-mono">claude_desktop_config.json</code>
+                  Method 2: Claude Desktop (<code className="text-orange-400 font-mono">claude_desktop_config.json</code>)
                 </div>
                 <CopyButton
                   text={JSON.stringify({
@@ -334,7 +452,7 @@ paths:
         </div>
       )}
 
-      {/* Tab 3: Cursor & Windsurf */}
+      {/* Tab 4: Cursor & Windsurf */}
       {activeClient === 'cursor' && (
         <div className="space-y-6">
           <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 sm:p-6 space-y-4">
@@ -391,7 +509,7 @@ paths:
         </div>
       )}
 
-      {/* Tab 4: Python & Node.js SDK */}
+      {/* Tab 5: Python & Node.js SDK */}
       {activeClient === 'sdk' && (
         <div className="space-y-6">
           <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 sm:p-6 space-y-4">
@@ -473,6 +591,14 @@ async def main():
             tools = await session.list_tools()
             print("Tools:", [t.name for t in tools.tools])
 
+async def main():
+    headers = {"Authorization": "Bearer mcp_live_YOUR_API_KEY"}
+    async with sse_client("${gatewayUrl}/mcp", headers=headers) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool("woocommerce__list_products", {"per_page": 5})
+            print(result)
+
 asyncio.run(main())`}
                   id="py-sdk"
                 />
@@ -497,7 +623,7 @@ asyncio.run(main())`}</pre>
         </div>
       )}
 
-      {/* Tab 5: cURL & Direct HTTP */}
+      {/* Tab 6: cURL & Direct HTTP */}
       {activeClient === 'curl' && (
         <div className="space-y-6">
           <div className="bg-zinc-900/80 border border-zinc-850 rounded-xl p-5 sm:p-6 space-y-4">
@@ -577,19 +703,19 @@ asyncio.run(main())`}</pre>
           <div className="bg-zinc-950 border border-zinc-850 rounded-lg p-3">
             <div className="font-mono text-xs text-emerald-400 font-semibold">mcp:read</div>
             <div className="text-[11px] text-zinc-400 mt-1">
-              Read operations only: `list_products`, `get_product`, `list_orders`, `list_notes`, `list_categories`.
+              Read operations only: `list_products`, `get_product`, `list_orders`, `list_notes`, `list_categories`. Granted to all authenticated accounts.
             </div>
           </div>
           <div className="bg-zinc-950 border border-zinc-850 rounded-lg p-3">
             <div className="font-mono text-xs text-indigo-400 font-semibold">mcp:write</div>
             <div className="text-[11px] text-zinc-400 mt-1">
-              Mutating operations: `create_product`, `update_product`, `update_order_status`, `create_note`. Enforced by RBAC.
+              Mutating operations: `create_product`, `update_product`, `update_order_status`, `create_note`. Exclusively granted to Admin role.
             </div>
           </div>
           <div className="bg-zinc-950 border border-zinc-850 rounded-lg p-3">
             <div className="font-mono text-xs text-amber-400 font-semibold">mcp:admin + HITL</div>
             <div className="text-[11px] text-zinc-400 mt-1">
-              Destructive actions: `delete_product`, `delete_note`. Requires Human-In-The-Loop explicit target confirmation.
+              Destructive actions: `delete_product`, `delete_note`. Requires Admin privileges & Human-In-The-Loop target ID confirmation.
             </div>
           </div>
         </div>

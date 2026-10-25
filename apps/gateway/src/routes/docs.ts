@@ -147,24 +147,57 @@ router.get(['/docs', '/api/docs'], (_req: Request, res: Response): void => {
 <body>
   <div class="container">
     <header>
-      <span class="badge">INTEGRATION GUIDE</span>
+      <span class="badge">INTEGRATION GUIDE · RFC 9728 & OAUTH 2.0</span>
       <h1>Connecting External AI to VYNN MCP Gateway</h1>
       <p class="lead">
-        Step-by-step instructions to connect ChatGPT, Claude, Cursor, LibreChat, and custom autonomous agents to your WooCommerce store and upstream MCP tools.
+        Step-by-step instructions to connect Claude Web, ChatGPT, Claude Desktop, Cursor, and custom autonomous agents to your WooCommerce store and upstream MCP tools.
       </p>
     </header>
 
-    <!-- Section 1: ChatGPT -->
+    <!-- RBAC Banner -->
+    <div style="background: rgba(249, 115, 22, 0.08); border: 1px solid rgba(249, 115, 22, 0.25); border-radius: 10px; padding: 16px; margin-bottom: 24px;">
+      <strong style="color: #fb923c; font-size: 13px; display: block; margin-bottom: 4px;">Role-Based Access Control (RBAC) Governed</strong>
+      <p style="color: #d4d4d8; font-size: 12px; margin: 0;">
+        Whichever client or protocol you connect, actual permissions are strictly determined by your user account role: 
+        <strong>Admin</strong> accounts receive full operational access (Read + Write + Delete). 
+        <strong>Member</strong> accounts are automatically capped to read-only tools regardless of requested scopes.
+      </p>
+    </div>
+
+    <!-- Section 1: Claude Web -->
     <div class="section">
-      <h2>🤖 ChatGPT (Web Custom GPTs & Actions) <span class="tag">OAuth 2.0 & Bearer</span></h2>
+      <h2>🟣 Claude Web (claude.ai Custom Connectors) <span class="tag">1-Click OAuth 2.0</span></h2>
       <p style="color: var(--text-muted); font-size: 13px;">
-        ChatGPT Custom GPTs connect via OAuth 2.0 authorization code flow or direct API Keys.
+        Claude Web natively discovers tools and authenticates via RFC 9728 Protected Resource metadata. Zero configuration files needed!
+      </p>
+
+      <div class="grid">
+        <div class="info-box">
+          <strong>Step 1: Open Claude Connectors</strong>
+          <p>In <a href="https://claude.ai" target="_blank" style="color: #38bdf8;">claude.ai</a>, open <code>Settings &rarr; Connectors</code> (or click the plug icon in any chat), then select <code>Add custom connector</code>.</p>
+        </div>
+        <div class="info-box">
+          <strong>Step 2: Enter Server Endpoint</strong>
+          <p>Name: <code>VYNN Gateway</code><br/>URL:</p>
+          <pre>${ISSUER}/mcp</pre>
+        </div>
+      </div>
+      <p style="color: var(--text-muted); font-size: 12px; margin-top: 8px;">
+        Claude will automatically redirect you to our login screen. Sign in with your gateway credentials and click <strong>Allow Access</strong>. Claude will immediately discover all 11+ WooCommerce and upstream tools.
+      </p>
+    </div>
+
+    <!-- Section 2: ChatGPT -->
+    <div class="section">
+      <h2>🤖 ChatGPT (Web Custom GPTs & Actions) <span class="tag">OAuth 2.0 + PKCE</span></h2>
+      <p style="color: var(--text-muted); font-size: 13px;">
+        ChatGPT Custom GPTs connect via OAuth 2.0 authorization code flow with persistent refresh tokens (<code>offline_access</code>).
       </p>
 
       <div class="grid">
         <div class="info-box">
           <strong>Step 1: Create OAuth Client in Dashboard</strong>
-          <p>Go to Dashboard &rarr; <code>OAuth Apps</code> &rarr; <code>New Application</code>. Set Redirect URI:</p>
+          <p>Go to Dashboard &rarr; <code>Access &rarr; OAuth Apps</code> &rarr; <code>New Application</code>. Set Redirect URI:</p>
           <pre>https://chatgpt.com/aip/plugin-oauth/callback</pre>
         </div>
         <div class="info-box">
@@ -173,7 +206,7 @@ router.get(['/docs', '/api/docs'], (_req: Request, res: Response): void => {
           <p style="font-size: 11px; font-family: monospace; color: #a1a1aa; margin-top: 6px;">
             • Auth URL: ${ISSUER}/oauth/authorize<br/>
             • Token URL: ${ISSUER}/oauth/token<br/>
-            • Scope: mcp:read mcp:write
+            • Scope: mcp:read mcp:write offline_access
           </p>
         </div>
       </div>
@@ -214,9 +247,13 @@ router.get(['/docs', '/api/docs'], (_req: Request, res: Response): void => {
 }</pre>
     </div>
 
-    <!-- Section 2: Claude Desktop -->
+    <!-- Section 3: Claude Desktop & Claude Code -->
     <div class="section">
-      <h2>🟣 Claude Desktop <span class="tag">Streamable HTTP / SSE</span></h2>
+      <h2>💻 Claude Desktop & Claude Code (CLI) <span class="tag">Streamable HTTP</span></h2>
+      <h3>Method 1: Claude Code CLI (1-line setup)</h3>
+      <pre>claude mcp add --transport http vynn-gateway ${ISSUER}/mcp --header "Authorization: Bearer mcp_live_YOUR_API_KEY"</pre>
+
+      <h3>Method 2: Claude Desktop Config</h3>
       <p style="color: var(--text-muted); font-size: 13px;">
         Add the gateway configuration to your <code>claude_desktop_config.json</code>:
       </p>
