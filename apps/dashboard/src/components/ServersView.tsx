@@ -11,6 +11,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
+import { ServersGridSkeleton, ToolsListSkeleton } from './Skeleton';
 
 interface ServersViewProps {
   user?: User;
@@ -220,9 +221,7 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
       )}
 
       {loading ? (
-        <div className="p-16 text-center text-zinc-500 font-mono text-xs">
-          Querying cluster MCP registries...
-        </div>
+        <ServersGridSkeleton count={3} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {servers.map((server) => {
@@ -414,9 +413,7 @@ export const ServersView: React.FC<ServersViewProps> = ({ user }) => {
 
             <div className="p-4 overflow-y-auto space-y-2.5">
               {toolsLoading ? (
-                <div className="text-center py-10 text-zinc-500 font-mono text-xs">
-                  Querying tools/list via JSON-RPC over Streamable HTTP...
-                </div>
+                <ToolsListSkeleton count={4} />
               ) : toolsError ? (
                 <div className="p-3 rounded bg-rose-950/20 border border-rose-900/40 text-rose-300 text-xs font-mono">
                   {toolsError}

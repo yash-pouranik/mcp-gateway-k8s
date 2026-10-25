@@ -9,8 +9,8 @@ import {
   Mail,
   ChevronRight,
   ShieldAlert,
-  Loader2,
 } from 'lucide-react';
+import { MembersGridSkeleton, TableRowsSkeleton } from './Skeleton';
 
 interface MembersViewProps {
   user?: User;
@@ -204,12 +204,15 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
 
       {/* 1. Sub-Tab: Team Roster */}
       {subTab === 'roster' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {members.map((member) => (
-            <div
-              key={member.id}
-              className="p-3 sm:p-4 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 rounded-lg transition space-y-2.5 sm:space-y-3"
-            >
+        loading ? (
+          <MembersGridSkeleton count={3} />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {members.map((member) => (
+              <div
+                key={member.id}
+                className="p-3 sm:p-4 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 rounded-lg transition space-y-2.5 sm:space-y-3"
+              >
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-2.5">
                   <div className="w-7 h-7 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-mono font-medium text-zinc-300">
@@ -253,6 +256,7 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
             </div>
           ))}
         </div>
+        )
       )}
 
       {/* 2. Sub-Tab: AI Chat Usage & Token Analytics */}
@@ -301,11 +305,7 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
               </thead>
               <tbody className="divide-y divide-zinc-850">
                 {usageLoading ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-zinc-500 font-mono text-xs">
-                      Loading usage metrics...
-                    </td>
-                  </tr>
+                  <TableRowsSkeleton cols={6} rows={4} />
                 ) : usageSummary.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-10 text-center text-zinc-500 text-xs font-mono">
@@ -378,9 +378,13 @@ export const MembersView: React.FC<MembersViewProps> = ({ user }) => {
 
             <div className="p-4 overflow-y-auto flex-1 space-y-3">
               {inspectLoading ? (
-                <div className="text-center py-12 text-zinc-500 font-mono text-xs">
-                  <Loader2 className="w-4 h-4 text-cf-orange animate-spin mx-auto mb-1.5" />
-                  <span>Loading conversations...</span>
+                <div className="space-y-2 py-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="p-3 bg-zinc-900/50 border border-zinc-850 rounded animate-pulse space-y-1.5">
+                      <div className="h-3.5 w-48 bg-zinc-850 rounded" />
+                      <div className="h-3 w-28 bg-zinc-900 rounded" />
+                    </div>
+                  ))}
                 </div>
               ) : selectedInspectSession ? (
                 <div className="space-y-3">

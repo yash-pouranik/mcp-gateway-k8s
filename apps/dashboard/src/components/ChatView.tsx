@@ -21,6 +21,7 @@ import {
   Cpu,
   ChevronUp,
 } from 'lucide-react';
+import { ChatSessionsSkeleton } from './Skeleton';
 
 interface ChatMessage {
   id: string;
@@ -626,10 +627,7 @@ export const ChatView: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto px-2 space-y-1 custom-scrollbar">
               {sessionsLoading ? (
-                <div className="text-center py-8 text-zinc-500 font-mono text-xs">
-                  <Loader2 className="w-4 h-4 text-cf-orange animate-spin mx-auto mb-1.5" />
-                  <span>Loading sessions...</span>
-                </div>
+                <ChatSessionsSkeleton count={5} />
               ) : sessions.length === 0 ? (
                 <div className="text-center py-8 text-zinc-500 text-xs font-sans px-4">
                   No saved chats yet. Start chatting with VYNN to save session history.

@@ -8,6 +8,7 @@ import { AccessView } from './components/AccessView';
 import { MonitoringView } from './components/MonitoringView';
 import { MembersView } from './components/MembersView';
 import { ConnectDocsView } from './components/ConnectDocsView';
+import { AppSkeleton } from './components/Skeleton';
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -48,11 +49,7 @@ export const App: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-zinc-500 font-mono text-xs">
-        Initializing MCP Gateway...
-      </div>
-    );
+    return <AppSkeleton />;
   }
 
   if (!user) {

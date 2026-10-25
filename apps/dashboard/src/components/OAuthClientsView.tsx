@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api, OAuthClient } from '../api';
 import { Plus, Trash2, Copy, Check, ChevronDown, ChevronUp, Shield } from 'lucide-react';
+import { OAuthClientsSkeleton } from './Skeleton';
 
 interface OAuthClientsViewProps {
   user: { id: string; email: string; name: string; role: 'admin' | 'member' };
@@ -113,14 +114,6 @@ export const OAuthClientsView: React.FC<OAuthClientsViewProps> = ({ user }) => {
     }));
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-zinc-500 font-mono text-xs">
-        Loading OAuth apps...
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -210,7 +203,9 @@ export const OAuthClientsView: React.FC<OAuthClientsViewProps> = ({ user }) => {
       )}
 
       {/* Client list */}
-      {clients.length === 0 ? (
+      {loading ? (
+        <OAuthClientsSkeleton count={3} />
+      ) : clients.length === 0 ? (
         <div className="text-center py-16 text-zinc-500">
           <Shield className="w-8 h-8 mx-auto mb-3 opacity-30" />
           <p className="text-sm font-medium text-zinc-400">No OAuth apps yet</p>

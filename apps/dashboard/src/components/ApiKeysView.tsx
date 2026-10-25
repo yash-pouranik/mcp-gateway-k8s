@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, ApiKey, User } from '../api';
 import { Plus, Copy, Check, Trash2, X, AlertTriangle, RefreshCw } from 'lucide-react';
+import { TableRowsSkeleton, MobileCardsSkeleton } from './Skeleton';
 
 interface ApiKeysViewProps {
   user?: User;
@@ -142,34 +143,33 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
         </div>
       )}
 
-      {loading ? (
-        <div className="p-16 text-center text-zinc-500 font-mono text-xs">Loading API keys...</div>
-      ) : (
-        <div className="border border-zinc-800 bg-zinc-950 rounded-lg overflow-hidden">
-          {/* Desktop Table */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="min-w-full text-left text-xs">
-              <thead className="bg-zinc-900/50 text-zinc-400 font-mono text-[11px] border-b border-zinc-800">
+      <div className="border border-zinc-800 bg-zinc-950 rounded-lg overflow-hidden">
+        {/* Desktop Table */}
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="min-w-full text-left text-xs">
+            <thead className="bg-zinc-900/50 text-zinc-400 font-mono text-[11px] border-b border-zinc-800">
+              <tr>
+                <th className="px-4 py-2.5 font-medium">Name</th>
+                {scope === 'team' && (
+                  <th className="px-4 py-2.5 font-medium">Owner</th>
+                )}
+                <th className="px-4 py-2.5 font-medium">Key Prefix</th>
+                <th className="px-4 py-2.5 font-medium">Usage</th>
+                <th className="px-4 py-2.5 font-medium">Status</th>
+                <th className="px-4 py-2.5 font-medium">Created</th>
+                <th className="px-4 py-2.5 font-medium text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-850">
+              {loading ? (
+                <TableRowsSkeleton cols={scope === 'team' ? 7 : 6} rows={4} />
+              ) : keys.length === 0 ? (
                 <tr>
-                  <th className="px-4 py-2.5 font-medium">Name</th>
-                  {scope === 'team' && (
-                    <th className="px-4 py-2.5 font-medium">Owner</th>
-                  )}
-                  <th className="px-4 py-2.5 font-medium">Key Prefix</th>
-                  <th className="px-4 py-2.5 font-medium">Usage</th>
-                  <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5 font-medium">Created</th>
-                  <th className="px-4 py-2.5 font-medium text-right">Action</th>
+                  <td colSpan={scope === 'team' ? 7 : 6} className="px-4 py-12 text-center text-zinc-500 text-xs font-mono">
+                    No API keys issued yet. Generate a key to connect Claude Code, Cursor, or Postman.
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-850">
-                {keys.length === 0 ? (
-                  <tr>
-                    <td colSpan={scope === 'team' ? 7 : 6} className="px-4 py-12 text-center text-zinc-500 text-xs font-mono">
-                      No API keys issued yet. Generate a key to connect Claude Code, Cursor, or Postman.
-                    </td>
-                  </tr>
-                ) : (
+              ) : (
                   keys.map((k) => {
                     const isRevoked = Boolean(k.revokedAt);
                     const isOwner = k.userId === user?.id;
@@ -239,7 +239,9 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
 
           {/* Mobile Cards */}
           <div className="block sm:hidden divide-y divide-zinc-850">
-            {keys.length === 0 ? (
+            {loading ? (
+              <MobileCardsSkeleton count={4} />
+            ) : keys.length === 0 ? (
               <div className="p-8 text-center text-zinc-500 text-xs font-mono">
                 No API keys issued yet. Generate a key to connect Claude Code, Cursor, or Postman.
               </div>
@@ -290,7 +292,6 @@ export const ApiKeysView: React.FC<ApiKeysViewProps> = ({ user }) => {
             )}
           </div>
         </div>
-      )}
 
       {/* Generate Key Modal */}
       {isModalOpen && (

@@ -11,6 +11,7 @@ import {
   Key,
   Sparkles,
 } from 'lucide-react';
+import { TableRowsSkeleton, MobileCardsSkeleton } from './Skeleton';
 
 interface AuditLogViewProps {
   user: User | null;
@@ -600,11 +601,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
             </thead>
             <tbody className="divide-y divide-zinc-850">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-zinc-500 font-mono text-xs">
-                    Loading audit records...
-                  </td>
-                </tr>
+                <TableRowsSkeleton cols={7} rows={6} />
               ) : logs.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center text-zinc-500 text-xs font-mono">
@@ -748,9 +745,7 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ user }) => {
         {/* 2. Mobile Card List View (Visible on phone) */}
         <div className="block sm:hidden divide-y divide-zinc-850">
           {loading ? (
-            <div className="p-8 text-center text-zinc-500 font-mono text-xs">
-              Loading audit records...
-            </div>
+            <MobileCardsSkeleton count={5} />
           ) : logs.length === 0 ? (
             <div className="p-8 text-center text-zinc-500 text-xs font-mono">
               No audit records match the selected filters.
