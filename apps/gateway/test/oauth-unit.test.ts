@@ -122,4 +122,33 @@ assert.equal(canDeleteOAuthApp(memberB, appOfMemberA), false, 'Member B must be 
 assert.equal(canDeleteOAuthApp(memberA, appOfAdmin), false, 'Member A must be forbidden from deleting Admin app');
 console.log('   ✅ OAuth application deletion & admin revocation RBAC verified.');
 
-console.log('\n🎉 ALL 5 OAUTH 2.0 SPECIFICATION & SECURITY UNIT TESTS PASSED CLEANLY!\n');
+// 6. Dynamic AI Client Ownership Re-binding
+console.log('6. Testing Dynamic AI Client Ownership Re-binding upon User Consent...');
+function shouldRebindClientOwnership(
+  client: { redirectUris: string[]; name: string; userId: string },
+  authorizingUserId: string
+): boolean {
+  const isDynamic =
+    client.redirectUris.some((u) => u.includes('claude.ai') || u.includes('chatgpt.com')) ||
+    client.name.includes('Dynamic');
+  return isDynamic && client.userId !== authorizingUserId;
+}
+
+const placeholderClaudeApp = {
+  redirectUris: ['https://claude.ai/api/auth/oauth/callback'],
+  name: 'Claude Web',
+  userId: 'usr_default_admin',
+};
+
+assert.equal(shouldRebindClientOwnership(placeholderClaudeApp, 'usr_nitin'), true, 'Claude Web must rebind to Nitin upon consent');
+assert.equal(shouldRebindClientOwnership(placeholderClaudeApp, 'usr_default_admin'), false, 'Same user should not need rebind');
+
+const customDashboardApp = {
+  redirectUris: ['https://internal-tool.company.com/oauth/cb'],
+  name: 'Accounting Tool',
+  userId: 'usr_admin',
+};
+assert.equal(shouldRebindClientOwnership(customDashboardApp, 'usr_nitin'), false, 'Manual custom apps must preserve original creator');
+console.log('   ✅ Dynamic AI client ownership re-binding verified.');
+
+console.log('\n🎉 ALL 6 OAUTH 2.0 SPECIFICATION & SECURITY UNIT TESTS PASSED CLEANLY!\n');

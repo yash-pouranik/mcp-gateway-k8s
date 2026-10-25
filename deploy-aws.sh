@@ -25,7 +25,7 @@ echo " -> [3/5] Building Notes MCP..."
 docker build -f apps/notes-mcp/Dockerfile -t mcp-platform/notes-mcp:v1.0.1 .
 
 echo " -> [4/5] Building Gateway Backend (with Observability & Prometheus)..."
-docker build -f apps/gateway/Dockerfile -t mcp-platform/gateway:v1.0.24 .
+docker build -f apps/gateway/Dockerfile -t mcp-platform/gateway:v1.0.25 .
 
 echo " -> [5/5] Building Dashboard Frontend (Multi-stage build)..."
 docker build -f apps/dashboard/Dockerfile -t mcp-platform/dashboard:v1.0.31 .
@@ -35,7 +35,7 @@ echo "🚚 Importing Images into K3s containerd..."
 docker save mcp-platform/woocommerce-mcp:v1.0.2 | k3s ctr images import -
 docker save mcp-platform/fakestore-mcp:v1.0.0 | k3s ctr images import -
 docker save mcp-platform/notes-mcp:v1.0.1 | k3s ctr images import -
-docker save mcp-platform/gateway:v1.0.24 | k3s ctr images import -
+docker save mcp-platform/gateway:v1.0.25 | k3s ctr images import -
 docker save mcp-platform/dashboard:v1.0.31 | k3s ctr images import -
 
 # 4. Deploy Helm Charts using values-aws.yaml

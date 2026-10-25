@@ -714,6 +714,24 @@ router.post('/oauth/authorize', async (req: Request, res: Response): Promise<voi
 
     const grantedScope = finalScopes.join(' ');
 
+    // Dynamic Client Ownership Binding:
+    // If the client was dynamically registered by Claude Web, ChatGPT, or DCR before user authentication,
+    // bind its ownership to the user who is actually authenticating and granting consent!
+    const isDynamicAiClient =
+      client.redirectUris.some((u) => u.includes('claude.ai') || u.includes('chatgpt.com')) ||
+      client.name.includes('Dynamic');
+
+    if (isDynamicAiClient && client.userId !== user.id) {
+      const updatedName = client.name.includes(user.name) ? client.name : `${client.name} (${user.name})`;
+      await prisma.oAuthClient.update({
+        where: { id: client.id },
+        data: {
+          userId: user.id,
+          name: updatedName,
+        },
+      });
+    }
+
     // Generate authorization code with RBAC-enforced scope
     const code = await generateAuthCode({
       clientId: client_id,
