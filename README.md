@@ -24,6 +24,8 @@ The entire platform is deployed live on a single-node AWS EC2 production Kuberne
 - **Web Console & AI Agent:** [https://vynn.urbackend.in](https://vynn.urbackend.in)
 - **WooCommerce Storefront:** [https://store.urbackend.in](https://store.urbackend.in)
 - **Streamable HTTP MCP Endpoint:** `https://vynn.urbackend.in/mcp`
+- **Demo video:** [https://youtu.be/r6e58UXxfVY](https://youtu.be/r6e58UXxfVY)
+- **Docs:** [System design & tradeoffs](docs/system-design.md) · [Threat model](docs/threat-model.md)
 
 ---
 
@@ -153,25 +155,24 @@ kubectl apply -f k8s/namespaces.yaml
 ```
 
 ### 3. Build & Import Container Images
-Build the container images locally and import them into the `k3d` cluster:
+Build the container images from the **repository root** (the Dockerfiles copy workspace files) and import them into the `k3d` cluster. Tags must match `helm/values-local.yaml`:
 
 ```bash
 # Gateway Backend
-docker build -t mcp-platform/gateway:v1.0.2 apps/gateway
-k3d image import mcp-platform/gateway:v1.0.2 -c mcp-cluster
+docker build -f apps/gateway/Dockerfile -t mcp-platform/gateway:v1.0.9 .
+k3d image import mcp-platform/gateway:v1.0.9 -c mcp-cluster
 
 # React Dashboard
-pnpm --filter @mcp-platform/dashboard build
-docker build -f apps/dashboard/Dockerfile -t mcp-platform/dashboard:v1.0.3 .
-k3d image import mcp-platform/dashboard:v1.0.3 -c mcp-cluster
+docker build -f apps/dashboard/Dockerfile -t mcp-platform/dashboard:v1.0.17 .
+k3d image import mcp-platform/dashboard:v1.0.17 -c mcp-cluster
 
 # WooCommerce MCP Server
-docker build -t mcp-platform/woocommerce-mcp:latest apps/woocommerce-mcp
+docker build -f apps/woocommerce-mcp/Dockerfile -t mcp-platform/woocommerce-mcp:latest .
 k3d image import mcp-platform/woocommerce-mcp:latest -c mcp-cluster
 
 # Secondary MCP Servers
-docker build -t mcp-platform/fakestore-mcp:latest apps/fakestore-mcp
-docker build -t mcp-platform/notes-mcp:latest apps/notes-mcp
+docker build -f apps/fakestore-mcp/Dockerfile -t mcp-platform/fakestore-mcp:latest .
+docker build -f apps/notes-mcp/Dockerfile -t mcp-platform/notes-mcp:latest .
 k3d image import mcp-platform/fakestore-mcp:latest -c mcp-cluster
 k3d image import mcp-platform/notes-mcp:latest -c mcp-cluster
 ```
@@ -216,6 +217,8 @@ helm upgrade --install gateway helm/charts/gateway -n gateway -f helm/values-loc
 - **Default Admin Login:**
   - **Email:** `admin@mcp-platform.local`
   - **Password:** `AdminPass123!`
+- **Demo members (local only, seeded):** `member_a@mcp-platform.local` and `member_b@mcp-platform.local`, password `MemberPass123!`. Change these on any shared or production deployment.
+- **Second user for the demo:** log in as admin → **Members** → add a member, then that member generates their own key under **API Keys**.
 
 ### 2. WooCommerce Storefront & Admin
 - **Storefront:** [https://store.localtest.me](https://store.localtest.me)
@@ -264,14 +267,37 @@ Members only see read-only tools, so for user B use a read-only cross-server pro
 
 ## Production Deployment (k3s VPS)
 
-To deploy to a production Linux VPS running k3s:
-1. Ensure `k3s` is installed with standard Traefik disabled or configure Ingress-Nginx.
-2. Point your DNS records (`store.yourdomain.com`, `dashboard.yourdomain.com`) to the VPS public IP.
-3. Deploy using `helm/values-prod.yaml`:
+To deploy to a production Linux VPS running k3s (the same charts, only values change):
+1. Install k3s without Traefik, then ingress-nginx and cert-manager:
    ```bash
-   helm upgrade --install woocommerce-store helm/charts/woocommerce-store -n woocommerce -f helm/values-prod.yaml
-   helm upgrade --install extra-mcps helm/charts/extra-mcps -n extra-mcps -f helm/values-prod.yaml
-   helm upgrade --install gateway helm/charts/gateway -n gateway -f helm/values-prod.yaml
+   curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable=traefik" sh -
+   export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+   helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+   helm repo add jetstack https://charts.jetstack.io && helm repo update
+   helm install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace
+   helm install cert-manager jetstack/cert-manager -n cert-manager --create-namespace --set crds.enabled=true
+   ```
+2. Point your DNS A records (e.g. `store.yourdomain.com`, `dashboard.yourdomain.com`) to the VPS public IP, and set those hosts in the values file.
+3. Create namespaces and the Let's Encrypt issuer (set your e-mail in `k8s/cluster-issuer.yaml` first):
+   ```bash
+   kubectl apply -f k8s/namespaces.yaml
+   kubectl apply -f k8s/cluster-issuer.yaml
+   ```
+4. Build the images on the VPS (repo root context) and import them into k3s containerd, e.g.:
+   ```bash
+   docker build -f apps/gateway/Dockerfile -t mcp-platform/gateway:<tag> .
+   docker save mcp-platform/gateway:<tag> | sudo k3s ctr images import -
+   ```
+   Repeat for every app (`deploy-aws.sh` does all of this), or push to a registry (`.github/workflows/docker-publish.yml` publishes to GHCR).
+5. Put real secrets in an untracked values file (e.g. `helm/values-secrets.yaml`, git-ignored) and deploy with `helm/values-prod.yaml` plus that file:
+   ```bash
+   helm upgrade --install woocommerce-store helm/charts/woocommerce-store -n woocommerce -f helm/values-prod.yaml -f helm/values-secrets.yaml
+   helm upgrade --install extra-mcps helm/charts/extra-mcps -n extra-mcps -f helm/values-prod.yaml -f helm/values-secrets.yaml
+   helm upgrade --install gateway helm/charts/gateway -n gateway -f helm/values-prod.yaml -f helm/values-secrets.yaml
+   ```
+6. Apply the NetworkPolicies:
+   ```bash
+   kubectl apply -f k8s/network-policies.yaml
    ```
 
 The live deployment at `urbackend.in` uses `helm/values-aws.yaml` (an AWS EC2 k3s variant of `values-prod.yaml`; secret values in it are placeholders) and is built and deployed by `deploy-aws.sh`.

@@ -8,3 +8,6 @@ build/
 .vscode/
 coverage/
 *.local
+
+# Real secrets for Helm deploys (never commit)
+helm/values-secrets.yaml
